@@ -20,8 +20,7 @@ define('FV_COUNTRY_BLOCKER_VERSION', '1.0.0');
 define('FV_COUNTRY_BLOCKER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('FV_COUNTRY_BLOCKER_PLUGIN_URL', plugin_dir_url(__FILE__));
 
-// Include the main plugin class
-
+// Include the main plugin classes
 $directory = FV_COUNTRY_BLOCKER_PLUGIN_DIR . '/includes';
 $files = glob($directory . '/*.php');
 foreach ($files as $file) {

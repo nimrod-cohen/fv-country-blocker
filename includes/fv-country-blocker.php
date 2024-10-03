@@ -42,13 +42,13 @@ class FV_Country_Blocker {
   }
 
   private function define_admin_hooks() {
-    add_action('admin_menu', array($this, 'add_admin_menu'));
-    add_action('admin_init', array($this, 'register_settings'));
-    add_action('fv_country_blocker_update_db', array($this, 'update_geoip_database'));
+    add_action('admin_menu', [$this, 'add_admin_menu']);
+    add_action('admin_init', [$this, 'register_settings']);
+    add_action('fv_country_blocker_update_db', [$this, 'update_geoip_database']);
   }
 
   private function define_public_hooks() {
-    add_action('init', array($this, 'check_visitor_country'));
+    add_action('init', [$this, 'check_visitor_country']);
   }
 
   public function add_admin_menu() {
@@ -63,10 +63,10 @@ class FV_Country_Blocker {
 
   public function register_settings() {
     register_setting('fv_country_blocker_options', 'fv_country_blocker_license_key');
-    register_setting('fv_country_blocker_options', 'fv_country_blocker_blocked_countries', array(
+    register_setting('fv_country_blocker_options', 'fv_country_blocker_blocked_countries', [
       'type' => 'array',
-      'sanitize_callback' => array($this, 'sanitize_blocked_countries')
-    ));
+      'sanitize_callback' => [$this, 'sanitize_blocked_countries']
+    ]);
   }
 
   public function sanitize_blocked_countries($input) {
@@ -80,7 +80,16 @@ class FV_Country_Blocker {
   }
 
   public function check_visitor_country() {
-    // Implement country checking logic here
+    //TODO: check if plugin enabled
+
+    //Implement country checking logic here
+    $blocked = get_option('fv_country_blocker_blocked_countries', []);
+    $visitor_country = FV_GeoIP::get_visitor_country();
+    if (in_array($visitor_country, $blocked)) {
+      // Redirect or display a message to the visitor
+      //TODO: show a message or redirect the visitor
+      die('You are not allowed to access this site from your country.');
+    }
   }
 
   public function run() {

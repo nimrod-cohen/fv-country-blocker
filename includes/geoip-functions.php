@@ -1,4 +1,8 @@
 <?php
+require_once FV_COUNTRY_BLOCKER_PLUGIN_DIR . '/vendor/autoload.php'; // Update path
+
+use GeoIp2\Database\Reader;
+
 class FV_GeoIP {
   public static function get_countries_list() {
     return [
@@ -249,5 +253,37 @@ class FV_GeoIP {
       'ZM' => ['name' => 'Zambia', 'long_name' => 'Zambia'],
       'ZW' => ['name' => 'Zimbabwe', 'long_name' => 'Zimbabwe']
     ];
+  }
+
+  public static function get_user_ip() {
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+      return $_SERVER['HTTP_CLIENT_IP'];
+    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+      return $_SERVER['HTTP_X_FORWARDED_FOR'];
+    } else {
+      return $_SERVER['REMOTE_ADDR'];
+    }
+  }
+
+  public static function get_visitor_country() {
+    // Path to the GeoLite2 Country database
+    $dbPath = WP_CONTENT_DIR . '/uploads/GeoLite2-Country.mmdb'; // Update path
+
+    // Create a Reader object
+    $reader = new Reader($dbPath);
+
+    // Get the user's IP address
+    $ip = self::get_user_ip();
+
+    try {
+      // Get the country information based on the IP
+      $record = $reader->country($ip);
+
+      // Return the country ISO code (e.g., "US", "GB")
+      return $record->country->isoCode;
+    } catch (Exception $e) {
+      // Handle any errors (e.g., IP not found, database issues)
+      return null;
+    }
   }
 }
