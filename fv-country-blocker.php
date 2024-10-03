@@ -39,6 +39,11 @@ run_fv_country_blocker();
 
 // Enqueue admin styles
 function fv_country_blocker_enqueue_admin_styles() {
+  $screen = get_current_screen();
+  if ($screen->id !== 'settings_page_fv-country-blocker') {
+    return;
+  }
+
   $plugin_version = fv_country_blocker_get_plugin_data('Version');
   wp_enqueue_script('fv-country-blocker-admin-search', FV_COUNTRY_BLOCKER_PLUGIN_URL . 'assets/js/admin.js', array(), $plugin_version, true);
   wp_enqueue_style('fv-country-blocker-admin', FV_COUNTRY_BLOCKER_PLUGIN_URL . 'assets/css/admin.css');

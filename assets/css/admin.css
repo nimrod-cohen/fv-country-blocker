@@ -41,4 +41,12 @@ h1 .version {
   font-weight: normal;
   vertical-align: middle;
   margin-left: 10px;
+}
+
+.fv-country-blocker-version {
+  font-size: 0.6em;
+  color: #999;
+  font-weight: normal;
+  vertical-align: middle;
+  margin-left: 10px;
 }/*# sourceMappingURL=admin.css.map */
