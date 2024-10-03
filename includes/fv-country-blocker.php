@@ -85,11 +85,19 @@ class FV_Country_Blocker {
     //Implement country checking logic here
     $blocked = get_option('fv_country_blocker_blocked_countries', []);
     $visitor_country = FV_GeoIP::get_visitor_country();
+    if (!$visitor_country) {
+      error_log('FV Country Blocker: Could not determine visitor country.');
+      return;
+    }
+
     if (in_array($visitor_country, $blocked)) {
       // Redirect or display a message to the visitor
-      //TODO: show a message or redirect the visitor
-      die('You are not allowed to access this site from your country.');
+      $custom_blocking_html = get_option('fv_country_blocker_custom_blocking_html', '');
+      status_header(403);
+      die($custom_blocking_html);
     }
+
+    //all good.
   }
 
   public function run() {

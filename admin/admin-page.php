@@ -25,6 +25,10 @@ function fv_country_blocker_admin_page() {
     $custom_mmdb_path = sanitize_text_field($_POST['fv_country_blocker_custom_mmdb_path']);
     update_option('fv_country_blocker_custom_mmdb_path', $custom_mmdb_path);
 
+    // Update custom blocking HTML
+    $custom_blocking_html = wp_kses_post($_POST['fv_country_blocker_custom_blocking_html']);
+    update_option('fv_country_blocker_custom_blocking_html', $custom_blocking_html);
+
     echo '<div class="updated"><p>Settings saved.</p></div>';
   }
 
@@ -33,6 +37,20 @@ function fv_country_blocker_admin_page() {
 
   // Get the custom MMDB path
   $custom_mmdb_path = get_option('fv_country_blocker_custom_mmdb_path', '');
+
+  $actual_mmdb_path = FV_Country_Blocker_Updater::get_mmdb_path();
+  //check last update date and time
+  if (file_exists($actual_mmdb_path)) {
+    $last_update = date('Y-m-d H:i:s', filemtime($actual_mmdb_path));
+  } else {
+    $last_update = "<span class='error'>MMDB file cannot be found</span>";
+  }
+
+  // Get the custom blocking HTML
+  $custom_blocking_html = get_option('fv_country_blocker_custom_blocking_html', '');
+  if (empty($custom_blocking_html)) {
+    $custom_blocking_html = '<h1>Access Denied</h1><p>Sorry, access from your country is not allowed.</p>';
+  }
 
   ?>
     <div class="wrap">
@@ -54,25 +72,39 @@ function fv_country_blocker_admin_page() {
                       <p class="description">Leave empty to use the current WP installation path. if you have multiple WP installs, and want to use the same MMDB for all of them, you can use the custom path, it is then your responsibility to make sure that the file is downloaded regularly.</p>
                   </td>
               </tr>
+              <tr valign="top">
+                    <th scope="row">Custom Blocking HTML</th>
+                    <td>
+                        <textarea name="fv_country_blocker_custom_blocking_html" rows="10" cols="50" class="large-text code"><?php echo esc_textarea($custom_blocking_html); ?></textarea>
+                        <p class="description">Enter the HTML to be displayed when a visit is blocked. You can use the following placeholders: {COUNTRY_CODE}, {COUNTRY_NAME}, {IP_ADDRESS}</p>
+                    </td>
+              </tr>
+              <tr valign="top">
+                <th scope="row">Last Update</th>
+                <td><?php echo $last_update; ?></td>
+              </tr>
             </table>
 
             <h2>Select Countries to Block</h2>
             <input type="text" id="country-search" placeholder="Search countries..." style="margin-bottom: 10px; width: 100%; max-width: 400px;">
             <div class="fv-country-list" style="max-height: 400px; overflow-y: scroll; border: 1px solid #ddd; padding: 10px;">
                 <?php foreach ($countries as $code => $names): ?>
-                    <label class="country-item" style="display: inline-block; width: 200px; margin-bottom: 10px;" data-code="<?php echo esc_attr(strtolower($code)); ?>" data-name="<?php echo esc_attr(strtolower($names["name"])); ?>" data-long-name="<?php echo esc_attr(strtolower($names["long_name"])); ?>">
-                        <input type="checkbox" name="blocked_countries[]" value="<?php echo esc_attr($code); ?>"
-                            <?php checked(in_array($code, $blocked_countries));?>>
-                        <img src="<?php echo esc_url(fv_country_blocker_get_flag_url($code)); ?>" alt="<?php echo esc_attr($names["name"]); ?> flag" style="width: 16px; height: 11px; margin-right: 5px;">
-                        <?php echo esc_html($names["name"]); ?>
+                    <label class="country-item"
+                      data-code="<?php echo esc_attr(strtolower($code)); ?>"
+                      data-name="<?php echo esc_attr(strtolower($names["name"])); ?>"
+                      title="<?php echo esc_attr(strtolower($names["long_name"])); ?>"
+                      data-long-name="<?php echo esc_attr(strtolower($names["long_name"])); ?>">
+                      <input type="checkbox" name="blocked_countries[]" value="<?php echo esc_attr($code); ?>"
+                      <?php checked(in_array($code, $blocked_countries));?>>
+                      <img src="<?php echo esc_url(fv_country_blocker_get_flag_url($code)); ?>"
+                        alt="<?php echo esc_attr($names["name"]); ?> flag"
+                        class="flag">
+                      <?php echo esc_html($names["name"]); ?>
                     </label>
                 <?php endforeach;?>
             </div>
-
             <?php submit_button();?>
         </form>
-        <h2>GeoIP Database Information</h2>
-        <p>Last updated: <?php echo esc_html(get_option('fv_country_blocker_last_update', 'Never')); ?></p>
     </div>
     <?php
 }

@@ -1,3 +1,7 @@
+.error {
+  color: red;
+}
+
 .fv-country-list {
   max-height: 400px;
   overflow-y: scroll;
@@ -8,6 +12,12 @@
     display: inline-block;
     width: 200px;
     margin-bottom: 10px;
+
+    &.country-item {
+      display: inline-block;
+      width: 200px;
+      margin-bottom: 10px;
+    }
   }
 
   img {
@@ -15,6 +25,12 @@
     height: 11px;
     margin-right: 5px;
     vertical-align: middle;
+
+    &.flag {
+      width: 16px;
+      height: 11px;
+      margin-right: 5px;
+    }
   }
 }
 

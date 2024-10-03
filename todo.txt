@@ -1,3 +1,8 @@
-1. read mmdb file
-2. add option to disable plugin
+V1.
+1. DONE read mmdb file
 3. add a select dropdown of what to do if blocked [404 page, die message, custom url]
+5. make sure the scheduler works if no custom file given
+
+v1.1
+2. add option to disable plugin
+4. consider the logging mechanism

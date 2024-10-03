@@ -266,14 +266,25 @@ class FV_GeoIP {
   }
 
   public static function get_visitor_country() {
+    //check if production
+    if (defined('WP_ENV') && WP_ENV != 'production') {
+      return 'IL';
+    }
+    // Get the user's IP address
+    $ip = self::get_user_ip();
+    if ($ip == '127.0.0.1') {
+      return 'IL';
+    }
+
     // Path to the GeoLite2 Country database
-    $dbPath = WP_CONTENT_DIR . '/uploads/GeoLite2-Country.mmdb'; // Update path
+    $dbPath = FV_Country_Blocker_Updater::get_mmdb_path();
+
+    if (!file_exists($dbPath)) {
+      return false;
+    }
 
     // Create a Reader object
     $reader = new Reader($dbPath);
-
-    // Get the user's IP address
-    $ip = self::get_user_ip();
 
     try {
       // Get the country information based on the IP
@@ -283,7 +294,8 @@ class FV_GeoIP {
       return $record->country->isoCode;
     } catch (Exception $e) {
       // Handle any errors (e.g., IP not found, database issues)
-      return null;
+      error_log($e->getMessage() . "\n" . $e->getTraceAsString());
+      return false;
     }
   }
 }
