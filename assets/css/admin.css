@@ -1,0 +1,30 @@
+.fv-country-list {
+  max-height: 400px;
+  overflow-y: scroll;
+  border: 1px solid #ddd;
+  padding: 10px;
+}
+.fv-country-list label {
+  display: inline-block;
+  width: 200px;
+  margin-bottom: 10px;
+}
+.fv-country-list img {
+  width: 16px;
+  height: 11px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+.maxmind-input {
+  width: 100%;
+  max-width: 400px;
+}
+
+h1 .version {
+  font-size: 0.6em;
+  color: #999;
+  font-weight: normal;
+  vertical-align: middle;
+  margin-left: 10px;
+}/*# sourceMappingURL=admin.css.map */
