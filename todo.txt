@@ -1,8 +1,12 @@
 V1.
-1. DONE read mmdb file
-3. add a select dropdown of what to do if blocked [404 page, die message, custom url]
-5. make sure the scheduler works if no custom file given
+DONE 1. read mmdb file
+DONE 2. add a select dropdown of what to do if blocked [404 page, die message, custom url]
+DONE 3. make sure the scheduler works if no custom file given
+4. connect git to plugin updates
+DONE 5. allow logged in admins to bypass
 
 v1.1
-2. add option to disable plugin
-4. consider the logging mechanism
+1. add option to disable plugin
+2. consider the logging mechanism
+3. add option to use the paid version
+4. add recent block logs UI in admin

@@ -265,17 +265,7 @@ class FV_GeoIP {
     }
   }
 
-  public static function get_visitor_country() {
-    //check if production
-    if (defined('WP_ENV') && WP_ENV != 'production') {
-      return 'IL';
-    }
-    // Get the user's IP address
-    $ip = self::get_user_ip();
-    if ($ip == '127.0.0.1') {
-      return 'IL';
-    }
-
+  public static function get_visitor_country($ip) {
     // Path to the GeoLite2 Country database
     $dbPath = FV_Country_Blocker_Updater::get_mmdb_path();
 

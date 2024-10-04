@@ -80,15 +80,29 @@ class FV_Country_Blocker {
   }
 
   public function check_visitor_country() {
-    //TODO: check if plugin enabled
+    $force = $_GET["force_country_ip"] ?? false;
 
-    //Implement country checking logic here
-    $blocked = get_option('fv_country_blocker_blocked_countries', []);
-    $visitor_country = FV_GeoIP::get_visitor_country();
+    // Get the user's IP address
+    $ip = FV_GeoIP::get_user_ip();
+
+    if (!$force && (
+      current_user_can('administrator')
+      || wp_get_environment_type() != 'production'
+      || $ip == '127.0.0.1')) {
+      return;
+    }
+
+    if ($force && $ip == '127.0.0.1') {
+      $ip = $force;
+    }
+
+    $visitor_country = FV_GeoIP::get_visitor_country($ip);
     if (!$visitor_country) {
       error_log('FV Country Blocker: Could not determine visitor country.');
       return;
     }
+
+    $blocked = get_option('fv_country_blocker_blocked_countries', []);
 
     if (in_array($visitor_country, $blocked)) {
       // Redirect or display a message to the visitor
