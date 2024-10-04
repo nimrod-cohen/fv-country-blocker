@@ -27,8 +27,8 @@ foreach ($files as $file) {
   require_once $file;
 }
 
-register_activation_hook(__FILE__, ['FV_Country_Blocker', 'activate_fv_country_blocker']);
-register_deactivation_hook(__FILE__, ['FV_Country_Blocker', 'deactivate_fv_country_blocker']);
+register_activation_hook(__FILE__, ['FV_Country_Blocker', 'activate']);
+register_deactivation_hook(__FILE__, ['FV_Country_Blocker', 'deactivate']);
 
 // Run the plugin
 function run_fv_country_blocker() {
