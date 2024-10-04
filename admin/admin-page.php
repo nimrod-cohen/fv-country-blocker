@@ -70,7 +70,10 @@ function fv_country_blocker_admin_page() {
                 <table class="form-table">
                   <tr valign="top">
                       <th scope="row">MaxMind License Key</th>
-                      <td><input type="text" name="fv_country_blocker_license_key" class="maxmind-input" value="<?php echo esc_attr(get_option('fv_country_blocker_license_key')); ?>" /></td>
+                      <td>
+                        <input type="text" name="fv_country_blocker_license_key" class="maxmind-input" value="<?php echo esc_attr(get_option('fv_country_blocker_license_key')); ?>" />
+                        <p class="description">This is only required if the custom path setting is empty, and you need to download the mmdb file regularly for this WP install independently</p>
+                      </td>
                   </tr>
                   <tr valign="top">
                       <th scope="row">Custom MMDB File Path</th>
@@ -83,7 +86,7 @@ function fv_country_blocker_admin_page() {
                         <th scope="row">Custom Blocking HTML</th>
                         <td>
                             <textarea name="fv_country_blocker_custom_blocking_html" rows="10" cols="50" class="large-text code"><?php echo esc_textarea($custom_blocking_html); ?></textarea>
-                            <p class="description">Enter the HTML to be displayed when a visit is blocked. You can use the following placeholders: {COUNTRY_CODE}, {COUNTRY_NAME}, {IP_ADDRESS}</p>
+                            <p class="description">Enter the HTML to be displayed when a visit is blocked.</p>
                         </td>
                   </tr>
                   <tr valign="top">
