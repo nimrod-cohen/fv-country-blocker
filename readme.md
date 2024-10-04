@@ -4,7 +4,7 @@ Tags: country blocker, IP blocker, geo-blocking, security
 Requires at least: 5.0
 Tested up to: 6.0
 Requires PHP: 7.0
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,10 +22,9 @@ To test in development or staging environments, you can simulate access from dif
 1. Install via the Add New Plugin wordpress interface, or upload the `fv-country-blocker` folder to the `/wp-content/plugins/` directory.
 2. Activate the plugin through the 'Plugins' menu in WordPress.
 3. Go to the plugin settings under **Settings > FV Country Blocker** to:
-a. configure which countries to block.
-b. set the MaxMind API key, or a custom path of the geolite2 country db.
-**Bear in mind that this plugin will only download the DB regularly if the API key is provided, and the custom path is empty.**
-
+   a. configure which countries to block.
+   b. set the MaxMind API key, or a custom path of the geolite2 country db.
+   **Bear in mind that this plugin will only download the DB regularly if the API key is provided, and the custom path is empty.**
 
 == Frequently Asked Questions ==
 
@@ -48,9 +47,10 @@ You can simulate a visitor's country by adding `?force_country_ip=xxx.xxx.xxx.xx
 == Changelog ==
 
 = 1.0.0 =
-* Initial release of the plugin.
-* Country blocking based on MaxMind IP database.
-* Added development testing feature using query parameters.
+
+- Initial release of the plugin.
+- Country blocking based on MaxMind IP database.
+- Added development testing feature using query parameters.
 
 == Upgrade Notice ==
 
