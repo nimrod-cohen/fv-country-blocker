@@ -4,7 +4,7 @@ class WP_GitHub_Updater {
   public function __construct() {
     if (is_admin()) {
       add_filter('site_transient_update_plugins', [$this, 'check_for_plugin_updates']);
-      add_filter( 'upgrader_post_install', array( $this, 'upgrader_post_install' ), 10, 3 );
+      add_filter('upgrader_post_install', array($this, 'upgrader_post_install'), 10, 3);
     }
   }
 
@@ -28,7 +28,6 @@ class WP_GitHub_Updater {
 
     //     // Plugin details
     $author = 'nimrod-cohen'; // Replace with your GitHub username
-    self::PLUGIN_SLUG = 'fv-country-blocker'; // Replace with your plugin slug
     $plugin_file = self::PLUGIN_SLUG . '/' . self::PLUGIN_SLUG . '.php';
     $plugin_data = get_plugin_data(WP_PLUGIN_DIR . '/' . $plugin_file);
     $current_version = $plugin_data['Version'];
@@ -81,20 +80,20 @@ class WP_GitHub_Updater {
     return $transient;
   }
 
-    public function upgrader_post_install( $true, $hook_extra, $result ) {
+  public function upgrader_post_install($true, $hook_extra, $result) {
 
     global $wp_filesystem;
 
     // Move & Activate
-    $proper_destination = WP_PLUGIN_DIR.'/'.self::PLUGIN_SLUG;
-    $wp_filesystem->move( $result['destination'], $proper_destination );
+    $proper_destination = WP_PLUGIN_DIR . '/' . self::PLUGIN_SLUG;
+    $wp_filesystem->move($result['destination'], $proper_destination);
     $result['destination'] = $proper_destination;
-    $activate = activate_plugin( WP_PLUGIN_DIR.'/'.self::PLUGIN_SLUG );
+    $activate = activate_plugin(WP_PLUGIN_DIR . '/' . self::PLUGIN_SLUG);
 
     // Output the update message
-    $fail  = __( 'The plugin has been updated, but could not be reactivated. Please reactivate it manually.', 'github_plugin_updater' );
-    $success = __( 'Plugin reactivated successfully.', 'github_plugin_updater' );
-    echo is_wp_error( $activate ) ? $fail : $success;
+    $fail = __('The plugin has been updated, but could not be reactivated. Please reactivate it manually.', 'github_plugin_updater');
+    $success = __('Plugin reactivated successfully.', 'github_plugin_updater');
+    echo is_wp_error($activate) ? $fail : $success;
     return $result;
 
   }

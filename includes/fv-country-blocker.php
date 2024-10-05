@@ -8,7 +8,7 @@ class FV_Country_Blocker {
 
   public function __construct() {
     $this->plugin_name = 'fv-country-blocker';
-    $this->version = FV_COUNTRY_BLOCKER_VERSION;
+    $this->version = fv_country_blocker_get_plugin_data('Version');
     $this->load_dependencies();
     $this->define_admin_hooks();
     $this->define_public_hooks();
