@@ -94,6 +94,8 @@ class WP_GitHub_Updater {
     $result['destination'] = $proper_destination;
     $activate = activate_plugin(self::PLUGIN_SLUG . '/' . self::PLUGIN_SLUG . ".php");
 
+    delete_site_transient('update_plugins');
+
     // Output the update message
     $fail = __('The plugin has been updated, but could not be reactivated. Please reactivate it manually.', 'github_plugin_updater');
     $success = __('Plugin reactivated successfully.', 'github_plugin_updater');
