@@ -9,6 +9,10 @@ class WP_GitHub_Updater {
   }
 
   function check_for_plugin_updates($transient) {
+    if (!$transient) {
+      return $transient;
+    }
+
     // Plugin slug and path
     $plugin_file = self::PLUGIN_SLUG . '/' . self::PLUGIN_SLUG . '.php';
 
