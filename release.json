@@ -3,7 +3,7 @@
   "slug": "fv-country-blocker",
   "author": "<a href='https://github.com/nimrod-cohen'>Nimrod Cohen</a>",
   "author_profile": "http://profiles.wordpress.org/daberelay",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "requires": "3.0",
   "tested": "5.8",
   "requires_php": "5.3",

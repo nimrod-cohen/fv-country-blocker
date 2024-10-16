@@ -71,8 +71,7 @@ if (!class_exists('GitHubPluginUpdater')) {
           return false;
         }
 
-        set_transient($this->cache_key, $remote, DAY_IN_SECONDS);
-
+        set_transient($this->cache_key, $remote, 5 * MINUTE_IN_SECONDS);
       }
 
       $remote = json_decode(wp_remote_retrieve_body($remote));
@@ -135,6 +134,12 @@ if (!class_exists('GitHubPluginUpdater')) {
         return true;
       }
 
+      $transient = get_transient($this->plugin_slug . '_latest_release');
+      if ($transient) {
+        $this->latest_release = $transient;
+        return true;
+      }
+
       $github_api_url = 'https://api.github.com/repos/' . $this->author . '/' . $this->plugin_slug . '/releases/latest';
 
       // Make the API request to GitHub
@@ -144,6 +149,8 @@ if (!class_exists('GitHubPluginUpdater')) {
       }
 
       $this->latest_release = json_decode(wp_remote_retrieve_body($response));
+
+      set_transient($this->plugin_slug . '_latest_release', $this->latest_release, 5 * MINUTE_IN_SECONDS);
 
       return true;
     }
