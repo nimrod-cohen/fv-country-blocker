@@ -77,7 +77,7 @@ class FV_Country_Blocker {
         'readme' => 'README.md', // which file to use as the readme for the version number
         'access_token' => '' // Access private repositories by authorizing under Plugins > GitHub Updates when this example plugin is installed
       );
-      new WP_GitHub_Updater($config);
+      new GitHubPluginUpdater($config);
     }
   }
 

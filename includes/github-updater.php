@@ -1,108 +1,200 @@
 <?php
-class WP_GitHub_Updater {
-  const PLUGIN_SLUG = "fv-country-blocker";
-  public function __construct() {
-    if (is_admin()) {
-      add_filter('site_transient_update_plugins', [$this, 'check_for_plugin_updates']);
-      add_filter('upgrader_post_install', array($this, 'upgrader_post_install'), 10, 3);
-    }
-  }
+/*
+ * Plugin name: Misha Update Checker
+ * Description: This simple plugin does nothing, only gets updates from a custom server
+ * Version: 1.1
+ * Author: Misha Rudrastyh, changes by Nimrod Cohen
+ * Author URI: https://rudrastyh.com
+ * License: GPL
+ *
+ * Make sure to set Author to your github user handle and Version in the plugin header
+ */
 
-  function check_for_plugin_updates($transient) {
-    if (!$transient) {
-      return $transient;
-    }
+/**/
 
-    // Plugin slug and path
-    $plugin_file = self::PLUGIN_SLUG . '/' . self::PLUGIN_SLUG . '.php';
+defined('ABSPATH') || exit;
 
-    // Check if the transient is set and still valid (e.g., cached for 12 hours)
-    $cached_update = get_transient(self::PLUGIN_SLUG . '_transient_data');
+if (!class_exists('GitHubPluginUpdater')) {
 
-    if ($cached_update) {
-      // If the update data is cached, use the cached value
-      $transient->response[$plugin_file] = $cached_update;
-      return $transient;
-    }
+  class GitHubPluginUpdater {
+    const PLUGIN_SLUG = "fv-country-blocker";
 
-    // Proceed with the regular update check
-    if (empty($transient->checked)) {
-      return $transient;
-    }
+    private $plugin_slug;
+    private $version;
+    private $cache_key;
+    private $author;
+    private $cache_allowed;
+    private $latest_release = null;
 
-    //     // Plugin details
-    $author = 'nimrod-cohen'; // Replace with your GitHub username
-    $plugin_file = self::PLUGIN_SLUG . '/' . self::PLUGIN_SLUG . '.php';
-    $plugin_data = get_plugin_data(WP_PLUGIN_DIR . '/' . $plugin_file);
-    $current_version = $plugin_data['Version'];
-
-    // GitHub API URL for the latest release
-    $github_api_url = 'https://api.github.com/repos/' . $author . '/' . self::PLUGIN_SLUG . '/releases/latest';
-
-    // Make the API request to GitHub
-    $response = wp_remote_get($github_api_url);
-    if (is_wp_error($response)) {
-      return $transient;
+    private function get_plugin_details() {
+      $plugin_file = $this->plugin_slug . '/' . $this->plugin_slug . '.php';
+      $plugin_data = get_plugin_data(WP_PLUGIN_DIR . '/' . $plugin_file);
+      $this->version = $plugin_data['Version'];
+      $this->author = $plugin_data['AuthorName'];
     }
 
-    $release_data = json_decode(wp_remote_retrieve_body($response));
+    public function __construct() {
+      $file = __FILE__;
+      $this->plugin_slug = explode('/', plugin_basename($file))[0];
+      $this->cache_key = $this->plugin_slug . '_transient_data';
+      $this->cache_allowed = false;
+      $this->get_plugin_details();
 
-    // Check if there's a rate limit or other GitHub error
-    //check if message contains 'API rate limit exceeded'
-    if (isset($release_data->message) && strpos($release_data->message, 'API rate limit exceeded') !== false) {
-      error_log('GitHub API rate limit exceeded');
-      $plugin_update = (object) array(
-        'slug' => self::PLUGIN_SLUG,
-        'new_version' => $current_version,
-        'url' => '',
-        'package' => ''
+      add_filter('plugins_api', [$this, 'info'], 20, 3);
+      add_filter('site_transient_update_plugins', [$this, 'update']);
+      add_action('upgrader_process_complete', [$this, 'purge'], 10, 2);
+    }
+
+    public function request() {
+
+      $remote = get_transient($this->cache_key);
+
+      if (false === $remote || !$this->cache_allowed) {
+
+        $url = 'https://raw.githubusercontent.com/' . $this->author . '/' . $this->plugin_slug . '/' . $this->latest_release->tag_name . '/release.json';
+
+        $remote = wp_remote_get(
+          $url,
+          [
+            'timeout' => 10,
+            'headers' => [
+              'Accept' => 'application/json'
+            ]
+          ]
+        );
+
+        if (
+          is_wp_error($remote)
+          || 200 !== wp_remote_retrieve_response_code($remote)
+          || empty(wp_remote_retrieve_body($remote))
+        ) {
+          return false;
+        }
+
+        set_transient($this->cache_key, $remote, DAY_IN_SECONDS);
+
+      }
+
+      $remote = json_decode(wp_remote_retrieve_body($remote));
+
+      return $remote;
+
+    }
+
+    function info($res, $action, $args) {
+      // do nothing if you're not getting plugin information right now
+      if ('plugin_information' !== $action) {
+        return $res;
+      }
+
+      // do nothing if it is not our plugin
+      if ($this->plugin_slug !== $args->slug) {
+        return $res;
+      }
+
+      // get updates
+      $remote = $this->request();
+
+      if (!$remote) {
+        return $res;
+      }
+
+      $res = new stdClass();
+
+      $res->name = $remote->name;
+      $res->slug = $remote->slug;
+      $res->version = $remote->version;
+      $res->tested = $remote->tested;
+      $res->requires = $remote->requires;
+      $res->author = $remote->author;
+      $res->author_profile = $remote->author_profile;
+      $res->download_link = $remote->download_url;
+      $res->trunk = $remote->download_url;
+      $res->requires_php = $remote->requires_php;
+      $res->last_updated = $remote->last_updated;
+
+      $res->sections = array(
+        'description' => $remote->sections->description,
+        'installation' => $remote->sections->installation,
+        'changelog' => $remote->sections->changelog
       );
-      set_transient(self::PLUGIN_SLUG . '_transient_data', $plugin_update, 10 * MINUTE_IN_SECONDS);
-      return $transient;
+
+      if (!empty($remote->banners)) {
+        $res->banners = array(
+          'low' => $remote->banners->low,
+          'high' => $remote->banners->high
+        );
+      }
+
+      return $res;
+
     }
 
-    $repo_version = preg_replace('/^v/', '', $release_data->tag_name);
+    private function get_latest_release() {
+      if ($this->latest_release) {
+        return true;
+      }
 
-    if (!version_compare($current_version, $repo_version, '<')) {
-      return $transient;
+      $github_api_url = 'https://api.github.com/repos/' . $this->author . '/' . $this->plugin_slug . '/releases/latest';
+
+      // Make the API request to GitHub
+      $response = wp_remote_get($github_api_url);
+      if (is_wp_error($response)) {
+        return false;
+      }
+
+      $this->latest_release = json_decode(wp_remote_retrieve_body($response));
+
+      return true;
     }
 
-    // Update details
-    $plugin_update = (object) array(
-      'slug' => self::PLUGIN_SLUG,
-      'new_version' => $repo_version,
-      'url' => $release_data->html_url,
-      'package' => $release_data->zipball_url
-    );
+    public function update($transient) {
 
-    // Cache the update data for 12 hours to prevent repeated checks
-    set_transient(self::PLUGIN_SLUG . '_transient_data', $plugin_update, 5 * MINUTE_IN_SECONDS);
+      if (empty($transient->checked)) {
+        return $transient;
+      }
 
-    // Add the update to the transient
-    $transient->response[$plugin_file] = $plugin_update;
+      // GitHub API URL for the latest release
+      if (!$this->get_latest_release()) {
+        return $transient;
+      }
 
-    return $transient;
-  }
+      $remote = $this->request();
 
-  public function upgrader_post_install($true, $hook_extra, $result) {
+      if (
+        $remote
+        && version_compare($this->version, $remote->version, '<')
+        && version_compare($remote->requires, get_bloginfo('version'), '<=')
+        && version_compare($remote->requires_php, PHP_VERSION, '<')
+      ) {
+        $res = new stdClass();
+        $res->slug = $this->plugin_slug;
+        $res->plugin = plugin_basename(__FILE__); // misha-update-plugin/misha-update-plugin.php
+        $res->new_version = $remote->version;
+        $res->tested = $remote->tested;
 
-    global $wp_filesystem;
+        $res->package = $this->latest_release->zipball_url;
 
-    // Move & Activate
-    $proper_destination = WP_PLUGIN_DIR . '/' . self::PLUGIN_SLUG;
-    $wp_filesystem->move($result['destination'], $proper_destination);
-    $result['destination'] = $proper_destination;
-    $activate = activate_plugin(self::PLUGIN_SLUG . '/' . self::PLUGIN_SLUG . ".php");
+        $transient->response[$res->plugin] = $res;
 
-    delete_transient(self::PLUGIN_SLUG . '_transient_data');
+      }
 
-    // Output the update message
-    $fail = __('The plugin has been updated, but could not be reactivated. Please reactivate it manually.', 'github_plugin_updater');
-    $success = __('Plugin reactivated successfully.', 'github_plugin_updater');
-    echo is_wp_error($activate) ? $fail : $success;
-    return $result;
+      return $transient;
+
+    }
+
+    public function purge($upgrader, $options) {
+
+      if (
+        $this->cache_allowed
+        && 'update' === $options['action']
+        && 'plugin' === $options['type']
+      ) {
+        // just clean the cache when new plugin version is installed
+        delete_transient($this->cache_key);
+      }
+
+    }
 
   }
 }
-
-$wpGHUpdater = new WP_GitHub_Updater();
