@@ -199,6 +199,7 @@ if (!class_exists('GitHubPluginUpdater')) {
       ) {
         // just clean the cache when new plugin version is installed
         delete_transient($this->cache_key);
+        delete_transient($this->plugin_slug . '_latest_release');
       }
 
     }
