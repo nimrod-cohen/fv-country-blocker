@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# Path to the main plugin file
+PLUGIN_FILE="fv-country-blocker.php"
+
+# Extract the current version from the plugin header
+VERSION=$(grep -i "^ \* Version:" "$PLUGIN_FILE" | awk '{print $NF}')
+
+# Get the latest git tag (if any)
+LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+
+# Strip the 'v' from the tag for comparison, if it exists
+LATEST_VERSION=${LATEST_TAG#v}
+
+# Check if the version has changed
+if [ "$VERSION" != "$LATEST_VERSION" ]; then
+    echo "Version has changed from $LATEST_VERSION to $VERSION. Creating new tag."
+
+    # Update release.json file
+    RELEASE_JSON="release.json"
+    if [ -f "$RELEASE_JSON" ]; then
+        # Use jq to update the JSON file (assuming jq is installed)
+        jq --arg version "$VERSION" '.version = $version' "$RELEASE_JSON" > tmp.$$.json && mv tmp.$$.json "$RELEASE_JSON"
+    else
+        echo "$RELEASE_JSON not found!"
+    fi
+
+    # Update Stable tag in readme.md
+    README="readme.md"
+    if [ -f "$README" ]; then
+        # Replace the "Stable tag" line in readme.md with the correct version
+        sed -i '' "s/^Stable tag: .*/Stable tag: $VERSION/" "$README"
+    else
+        echo "$README not found!"
+    fi
+
+    # Add the modified files to the commit
+    git add "$RELEASE_JSON" "$README"
+
+    # Create a new tag with the version
+    TAG_NAME="v$VERSION"
+    git tag "$TAG_NAME"
+
+    # Push the tag to GitHub
+    git push origin "$TAG_NAME"
+
+    echo "New tag $TAG_NAME created and pushed to GitHub."
+else
+    echo "Version has not changed. No new tag created."
+fi
