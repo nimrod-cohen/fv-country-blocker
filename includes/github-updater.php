@@ -20,8 +20,6 @@ defined('ABSPATH') || exit;
 if (!class_exists('GitHubPluginUpdater')) {
 
   class GitHubPluginUpdater {
-    const PLUGIN_SLUG = "fv-country-blocker";
-
     private $plugin_slug;
     private $version;
     private $cache_key;
