@@ -8,8 +8,9 @@
  * License: GPL
  *
  * Make sure to set Author to your github user handle and Version in the plugin header
- * use the .git/hooks/pre-commit to automatically update the version number
+ * use the .git/hooks/pre-commit and post-commit to automatically update the version number
  * in release.json and readme.md files if necessary (there's a pre-commit.sample file)
+ * and create a tag with the version number
  */
 
 /**/

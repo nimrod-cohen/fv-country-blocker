@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Path to the main plugin file
+PLUGIN_FILE="fv-country-blocker.php"
+
+# Extract the current version from the plugin header in the current commit
+CURRENT_VERSION=$(grep -i "^ \* Version:" "$PLUGIN_FILE" | awk '{print $NF}')
+
+# Get the latest git tag (if any)
+LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+
+# Strip the 'v' from the tag for comparison
+LATEST_VERSION=${LATEST_TAG#v}
+
+# Check if the version has changed
+if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ]; then
+    echo "Version has changed from $LATEST_VERSION to $CURRENT_VERSION. Creating new tag."
+
+    # Create a new tag with the version
+    TAG_NAME="v$CURRENT_VERSION"
+    git tag "$TAG_NAME"
+
+    # Push the tag to GitHub
+    git push origin "$TAG_NAME"
+
+    echo "New tag $TAG_NAME created and pushed to GitHub."
+else
+    echo "Version has not changed. No new tag created."
+fi
+
