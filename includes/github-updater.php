@@ -221,7 +221,7 @@ if (!class_exists('GitHubPluginUpdater')) {
       $proper_destination = WP_PLUGIN_DIR . '/' . $this->plugin_slug;
       $wp_filesystem->move($result['destination'], $proper_destination);
       $result['destination'] = $proper_destination;
-      $result['destination_name'] = $this->plugin_file;
+      $result['destination_name'] = $this->plugin_slug;
       return $response;
     }
   }
