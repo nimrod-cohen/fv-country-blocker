@@ -25,10 +25,11 @@ if (!class_exists('GitHubPluginUpdater')) {
     private $author;
     private $cache_allowed;
     private $latest_release = null;
+    private $plugin_file = null;
 
     private function get_plugin_details() {
-      $plugin_file = $this->plugin_slug . '/' . $this->plugin_slug . '.php';
-      $plugin_data = get_plugin_data(WP_PLUGIN_DIR . '/' . $plugin_file);
+      $this->plugin_file = $this->plugin_slug . '/' . $this->plugin_slug . '.php';
+      $plugin_data = get_plugin_data(WP_PLUGIN_DIR . '/' . $this->plugin_file);
       $this->version = $plugin_data['Version'];
       $this->author = $plugin_data['AuthorName'];
     }
@@ -43,6 +44,7 @@ if (!class_exists('GitHubPluginUpdater')) {
       add_filter('plugins_api', [$this, 'info'], 20, 3);
       add_filter('site_transient_update_plugins', [$this, 'update']);
       add_action('upgrader_process_complete', [$this, 'purge'], 10, 2);
+      add_action('upgrader_post_install', [$this, 'post_install'], 10, 3);
     }
 
     public function request() {
@@ -176,7 +178,7 @@ if (!class_exists('GitHubPluginUpdater')) {
       ) {
         $res = new stdClass();
         $res->slug = $this->plugin_slug;
-        $res->plugin = plugin_basename(__FILE__); // misha-update-plugin/misha-update-plugin.php
+        $res->plugin = $this->plugin_file; // misha-update-plugin/misha-update-plugin.php
         $res->new_version = $remote->version;
         $res->tested = $remote->tested;
 
@@ -201,7 +203,16 @@ if (!class_exists('GitHubPluginUpdater')) {
         delete_transient($this->cache_key);
         delete_transient($this->plugin_slug . '_latest_release');
       }
+    }
 
+    public function post_install($true, $hook_extra, $result) {
+      global $wp_filesystem;
+
+      // Move to proper destination
+      $proper_destination = WP_PLUGIN_DIR . '/' . $this->plugin_slug;
+      $wp_filesystem->move($result['destination'], $proper_destination);
+      $result['destination'] = $proper_destination;
+      return $result;
     }
 
   }
