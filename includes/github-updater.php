@@ -49,6 +49,7 @@ if (!class_exists('GitHubPluginUpdater')) {
       add_filter('plugins_api', [$this, 'info'], 20, 3);
       add_filter('site_transient_update_plugins', [$this, 'update']);
       add_action('upgrader_process_complete', [$this, 'finish_install'], 10, 2);
+      add_action('upgrader_post_install', [$this, 'fix_folder'], 10, 2);
     }
 
     public function request() {
@@ -215,13 +216,14 @@ if (!class_exists('GitHubPluginUpdater')) {
         delete_transient($this->cache_key);
         delete_transient($this->release_notes_cache_key);
       }
+    }
 
-      //move the folder to the correct location
+    public function fix_folder($response, $hook_extra, $result) {
       global $wp_filesystem;
       $proper_destination = WP_PLUGIN_DIR . '/' . $this->plugin_slug;
-      $wp_filesystem->move($upgrader->result['destination'], $proper_destination);
-      $upgrader->result['destination'] = $proper_destination;
-
+      $wp_filesystem->move($result['destination'], $proper_destination);
+      $result['destination'] = $proper_destination;
+      return $response;
     }
   }
 }
