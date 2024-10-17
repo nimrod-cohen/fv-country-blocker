@@ -40,7 +40,7 @@ if (!class_exists('GitHubPluginUpdater')) {
       $file = __FILE__;
       $this->plugin_slug = explode('/', plugin_basename($file))[0];
       $this->cache_key = $this->plugin_slug . '_transient_data';
-      $this->cache_allowed = false;
+      $this->cache_allowed = true;
       $this->get_plugin_details();
 
       add_filter('plugins_api', [$this, 'info'], 20, 3);
