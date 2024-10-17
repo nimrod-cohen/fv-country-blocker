@@ -47,7 +47,7 @@ if (!class_exists('GitHubPluginUpdater')) {
       add_filter('plugins_api', [$this, 'info'], 20, 3);
       add_filter('site_transient_update_plugins', [$this, 'update']);
       add_action('upgrader_process_complete', [$this, 'finish_install'], 10, 2);
-      add_action('upgrader_post_install', [$this, 'fix_folder'], 10, 2);
+      add_action('upgrader_post_install', [$this, 'fix_folder'], 10, 3);
     }
 
     public function request() {
