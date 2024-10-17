@@ -203,7 +203,7 @@ if (!class_exists('GitHubPluginUpdater')) {
 
     }
 
-    public function finish_install(&$upgrader, $options) {
+    public function finish_install($upgrader, $options) {
       if (
         'update' !== $options['action']
         || 'plugin' === $options['type']
