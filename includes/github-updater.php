@@ -14,10 +14,12 @@ class GhPluginUpdater {
   private $github_auth_token = null;
   private $github_username = null;
   private $github_repository = null;
+  private $slug = null;
 
   public function __construct($file, $github_auth_token = null, $github_username = null, $github_repository = null) {
     $this->file = $file;
     $this->basename = plugin_basename($this->file);
+    $this->slug = current(explode('/', $this->basename));
     $this->github_auth_token = $github_auth_token;
     $this->github_username = $github_username;
     $this->github_repository = $github_repository;
@@ -49,7 +51,7 @@ class GhPluginUpdater {
     if (version_compare($this->github_response['tag_name'], $transient->checked[$this->basename], 'gt')) {
       $plugin = [
         'url' => $this->plugin_data['PluginURI'],
-        'slug' => current(explode('/', $this->basename)),
+        'slug' => $this->slug,
         'package' => $this->github_response['zipball_url'],
         'new_version' => $this->github_response['tag_name']
       ];
@@ -72,7 +74,7 @@ class GhPluginUpdater {
       return false;
     }
 
-    if ($args->slug == current(explode('/', $this->basename))) {
+    if ($args->slug == $this->slug) {
       $this->get_repository_info();
       $this->get_plugin_data();
 
@@ -179,6 +181,8 @@ class GhPluginUpdater {
     if ($this->github_auth_token) {
       $response['zipball_url'] = add_query_arg('access_token', $this->github_auth_token, $response['zipball_url']);
     }
+
+    $response['tag_name'] = str_replace('v', '', $response['tag_name']);
 
     set_transient('gh_latest_release', $response, 5 * MINUTE_IN_SECONDS);
     $this->github_response = $response;
