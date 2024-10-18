@@ -151,29 +151,36 @@ class GhPluginUpdater {
       return;
     }
 
+    $transient = get_transient('gh_latest_release');
+    if ($transient) {
+      $this->github_response = $transient;
+      return;
+    }
+
     $args = [
       'method' => 'GET',
       'timeout' => 5,
       'redirection' => 5,
       'httpversion' => '1.0',
-      'headers' => [
-        'Authorization' => 'token ' . $this->github_auth_token
-      ],
       'sslverify' => true
     ];
-    $request_uri = sprintf("https://api.github.com/repos/%s/%s/releases/", $this->github_username, $this->github_repository);
+
+    if ($this->github_auth_token) {
+      $args['headers'] = [
+        'Authorization' => 'token ' . $this->github_auth_token
+      ];
+    }
+
+    $request_uri = sprintf("https://api.github.com/repos/%s/%s/releases/latest", $this->github_username, $this->github_repository);
 
     $request = wp_remote_get($request_uri, $args);
     $response = json_decode(wp_remote_retrieve_body($request), true);
-
-    if (is_array($response)) {
-      $response = current($response);
-    }
 
     if ($this->github_auth_token) {
       $response['zipball_url'] = add_query_arg('access_token', $this->github_auth_token, $response['zipball_url']);
     }
 
+    set_transient('gh_latest_release', $response, 5 * MINUTE_IN_SECONDS);
     $this->github_response = $response;
   }
 
