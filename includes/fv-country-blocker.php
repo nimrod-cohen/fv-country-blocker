@@ -63,7 +63,7 @@ class FV_Country_Blocker {
   }
 
   public function check_version() {
-    $updater = new GhPluginUpdater(__FILE__, 'nimrod-cohen', 'fv-country-blocker');
+    $updater = new GhPluginUpdater(__FILE__, null, 'nimrod-cohen', 'fv-country-blocker');
     $updater->init();
   }
 
