@@ -3,7 +3,7 @@
  * Plugin Name: FV Country Blocker
  * Plugin URI: https://github.com/nimrod-cohen/fv-country-blocker
  * Description: Block visitors from specific countries using MaxMind GeoIP database.
- * Version: 1.0.24
+ * Version: 1.0.25
  * Author: nimrod-cohen
  * Author URI: https://github.com/nimrod-cohen/fv-country-blocker
  * License: GPL-2.0+
@@ -59,4 +59,9 @@ function fv_country_blocker_get_plugin_data($key = null) {
     $plugin_data = get_plugin_data(__FILE__);
   }
   return $key ? ($plugin_data[$key] ?? null) : $plugin_data;
+}
+
+if (is_admin()) {
+  $updater = new GhPluginUpdater(__FILE__, 'nimrod-cohen', 'fv-country-blocker');
+  $updater->init();
 }

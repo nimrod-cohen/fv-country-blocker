@@ -1,228 +1,190 @@
 <?php
-/*
- * Plugin name: Misha Update Checker
- * Description: This simple plugin does nothing, only gets updates from a custom server
- * Version: 1.1
- * Author: Misha Rudrastyh, changes by Nimrod Cohen
- * Author URI: https://rudrastyh.com
- * License: GPL
- *
- * Make sure to set Author to your github user handle and Version in the plugin header
- * use the .git/hooks/pre-commit and post-commit to automatically update the version number
- * in release.json and readme.md files if necessary (there's a pre-commit.sample file)
- * and create a tag with the version number
+
+declare (strict_types = 1);
+
+/**
+ * Update WordPress plugin from GitHub Private Repository.
  */
+class GhPluginUpdater {
+  private $file;
+  private $plugin_data;
+  private $basename;
+  private $active = false;
+  private $github_response;
+  private $github_auth_token = null;
+  private $github_username = null;
+  private $github_repository = null;
 
-/**/
+  public function __construct($file, $github_auth_token = null, $github_username = null, $github_repository = null) {
+    $this->file = $file;
+    $this->basename = plugin_basename($this->file);
+    $this->github_auth_token = $github_auth_token;
+    $this->github_username = $github_username;
+    $this->github_repository = $github_repository;
+  }
 
-defined('ABSPATH') || exit;
+  /**
+   * Init GitHub Plugin Updater.
+   */
+  public function init(): void {
+    add_filter('pre_set_site_transient_update_plugins', [$this, 'modify_transient'], 10, 1);
+    add_filter('http_request_args', [$this, 'set_header_token'], 10, 2);
+    add_filter('plugins_api', [$this, 'plugin_popup'], 10, 3);
+    add_filter('upgrader_post_install', [$this, 'after_install'], 10, 3);
+  }
 
-if (!class_exists('GitHubPluginUpdater')) {
-
-  class GitHubPluginUpdater {
-    private $plugin_slug;
-    private $version;
-    private $cache_key;
-    private $release_notes_cache_key;
-    private $author;
-    private $cache_allowed;
-    private $latest_release = null;
-    private $plugin_file = null;
-
-    private function get_plugin_details() {
-      $this->plugin_file = $this->plugin_slug . '/' . $this->plugin_slug . '.php';
-      $plugin_data = get_plugin_data(WP_PLUGIN_DIR . '/' . $this->plugin_file);
-      $this->version = $plugin_data['Version'];
-      $this->author = $plugin_data['AuthorName'];
-    }
-
-    public function __construct() {
-      $file = __FILE__;
-      $this->plugin_slug = explode('/', plugin_basename($file))[0];
-      $this->cache_key = $this->plugin_slug . '_transient_data';
-      $this->release_notes_cache_key = $this->plugin_slug . '_release';
-      $this->cache_allowed = true;
-      $this->get_plugin_details();
-
-      add_filter('plugins_api', [$this, 'info'], 20, 3);
-      add_filter('site_transient_update_plugins', [$this, 'update']);
-      add_action('upgrader_process_complete', [$this, 'finish_install'], 10, 2);
-      add_action('upgrader_post_install', [$this, 'fix_folder'], 10, 3);
-    }
-
-    public function request() {
-
-      $remote = get_transient($this->cache_key);
-
-      if (false === $remote || !$this->cache_allowed) {
-
-        $url = 'https://raw.githubusercontent.com/' . $this->author . '/' . $this->plugin_slug . '/' . $this->latest_release->tag_name . '/release.json';
-
-        $remote = wp_remote_get(
-          $url,
-          [
-            'timeout' => 10,
-            'headers' => [
-              'Accept' => 'application/json'
-            ]
-          ]
-        );
-
-        if (
-          is_wp_error($remote)
-          || 200 !== wp_remote_retrieve_response_code($remote)
-          || empty(wp_remote_retrieve_body($remote))
-        ) {
-          return false;
-        }
-
-        set_transient($this->cache_key, $remote, 5 * MINUTE_IN_SECONDS);
-      }
-
-      $remote = json_decode(wp_remote_retrieve_body($remote));
-
-      return $remote;
-
-    }
-
-    function info($res, $action, $args) {
-      // do nothing if you're not getting plugin information right now
-      if ('plugin_information' !== $action) {
-        return $res;
-      }
-
-      // do nothing if it is not our plugin
-      if ($this->plugin_slug !== $args->slug) {
-        return $res;
-      }
-
-      // get updates
-      $remote = $this->request();
-
-      if (!$remote) {
-        return $res;
-      }
-
-      $res = new stdClass();
-
-      $res->name = $remote->name;
-      $res->slug = $remote->slug;
-      $res->version = $remote->version;
-      $res->tested = $remote->tested;
-      $res->requires = $remote->requires;
-      $res->author = $remote->author;
-      $res->author_profile = $remote->author_profile;
-      $res->download_link = $remote->download_url;
-      $res->trunk = $remote->download_url;
-      $res->requires_php = $remote->requires_php;
-      $res->last_updated = $remote->last_updated;
-
-      $res->sections = array(
-        'description' => $remote->sections->description,
-        'installation' => $remote->sections->installation,
-        'changelog' => $remote->sections->changelog
-      );
-
-      if (!empty($remote->banners)) {
-        $res->banners = array(
-          'low' => $remote->banners->low,
-          'high' => $remote->banners->high
-        );
-      }
-
-      return $res;
-
-    }
-
-    private function get_latest_release() {
-      if ($this->latest_release) {
-        return true;
-      }
-
-      $transient = null;
-      if ($this->cache_allowed) {
-        $transient = get_transient($this->release_notes_cache_key);
-      }
-
-      if ($transient) {
-        $this->latest_release = $transient;
-        return true;
-      }
-
-      $github_api_url = 'https://api.github.com/repos/' . $this->author . '/' . $this->plugin_slug . '/releases/latest';
-
-      // Make the API request to GitHub
-      $response = wp_remote_get($github_api_url);
-      if (is_wp_error($response)) {
-        return false;
-      }
-
-      $this->latest_release = json_decode(wp_remote_retrieve_body($response));
-
-      if ($this->cache_allowed) {
-        set_transient($this->release_notes_cache_key, $this->latest_release, 5 * MINUTE_IN_SECONDS);
-      }
-
-      return true;
-    }
-
-    public function update($transient) {
-
-      if (empty($transient->checked)) {
-        return $transient;
-      }
-
-      // GitHub API URL for the latest release
-      if (!$this->get_latest_release()) {
-        return $transient;
-      }
-
-      $remote = $this->request();
-
-      if (
-        $remote
-        && version_compare($this->version, $remote->version, '<')
-        && version_compare($remote->requires, get_bloginfo('version'), '<=')
-        && version_compare($remote->requires_php, PHP_VERSION, '<')
-      ) {
-        $res = new stdClass();
-        $res->slug = $this->plugin_slug;
-        $res->plugin = $this->plugin_file; // misha-update-plugin/misha-update-plugin.php
-        $res->new_version = $remote->version;
-        $res->tested = $remote->tested;
-
-        $res->package = $this->latest_release->zipball_url;
-
-        $transient->response[$res->plugin] = $res;
-
-      }
-
+  /**
+   * If new version exists, update transient with GitHub info.
+   *
+   * @param object $transient Transient object with plugins information.
+   */
+  public function modify_transient(object $transient): object {
+    if (!property_exists($transient, 'checked')) {
       return $transient;
-
     }
 
-    public function finish_install($upgrader, $options) {
-      if (
-        'update' !== $options['action']
-        || 'plugin' === $options['type']
-      ) {
-        return;
+    $this->get_repository_info();
+    $this->get_plugin_data();
+
+    if (version_compare($this->github_response['tag_name'], $transient->checked[$this->basename], 'gt')) {
+      $plugin = [
+        'url' => $this->plugin_data['PluginURI'],
+        'slug' => current(explode('/', $this->basename)),
+        'package' => $this->github_response['zipball_url'],
+        'new_version' => $this->github_response['tag_name']
+      ];
+
+      $transient->response[$this->basename] = (object) $plugin;
+    }
+
+    return $transient;
+  }
+
+  /**
+   * Complete details of new plugin version on popup.
+   *
+   * @param array|false|object $result The result object or array. Default false.
+   * @param string             $action The type of information being requested from the Plugin Installation API.
+   * @param object             $args   Plugin API arguments.
+   */
+  public function plugin_popup(bool $result, string $action, object $args) {
+    if ('plugin_information' !== $action || empty($args->slug)) {
+      return false;
+    }
+
+    if ($args->slug == current(explode('/', $this->basename))) {
+      $this->get_repository_info();
+      $this->get_plugin_data();
+
+      $plugin = [
+        'name' => $this->plugin_data['Name'],
+        'slug' => $this->basename,
+        'requires' => $this->plugin_data['RequiresWP'],
+        'tested' => $this->plugin_data['TestedUpTo'],
+        'version' => $this->github_response['tag_name'],
+        'author' => $this->plugin_data['AuthorName'],
+        'author_profile' => $this->plugin_data['AuthorURI'],
+        'last_updated' => $this->github_response['published_at'],
+        'homepage' => $this->plugin_data['PluginURI'],
+        'short_description' => $this->plugin_data['Description'],
+        'sections' => [
+          'Description' => $this->plugin_data['Description'],
+          'Updates' => $this->github_response['body']
+        ],
+        'download_link' => $this->github_response['zipball_url']
+      ];
+
+      return (object) $plugin;
+    }
+
+    return $result;
+  }
+
+  /**
+   * Active plugin after install new version.
+   *
+   * @param bool  $response   Installation response.
+   * @param array $hook_extra Extra arguments passed to hooked filters.
+   * @param array $result     Installation result data.
+   */
+  public function after_install(bool $response, array $hook_extra, array $result): bool {
+    global $wp_filesystem;
+
+    $install_directory = plugin_dir_path($this->file);
+    $wp_filesystem->move($result['destination'], $install_directory);
+    $result['destination'] = $install_directory;
+
+    if ($this->active) {
+      activate_plugin($this->basename);
+    }
+
+    return $response;
+  }
+
+  /**
+   * GitHub access_token param was deprecated. We need to set header with token for requests.
+   *
+   * @param array  $args HTTP request arguments.
+   * @param string $url  The request URL.
+   */
+  public function set_header_token(array $parsed_args, string $url): array {
+    $parsed_url = parse_url($url);
+
+    if ('api.github.com' === ($parsed_url['host'] ?? null) && isset($parsed_url['query'])) {
+      parse_str($parsed_url['query'], $query);
+
+      if (isset($query['access_token'])) {
+        $parsed_args['headers']['Authorization'] = 'token ' . $query['access_token'];
+
+        $this->active = is_plugin_active($this->basename);
       }
-
-      // just clean the cache when new plugin version is installed
-      if ($this->cache_allowed) {
-        delete_transient($this->cache_key);
-        delete_transient($this->release_notes_cache_key);
-      }
     }
 
-    public function fix_folder($response, $hook_extra, &$result) {
-      global $wp_filesystem;
-      $proper_destination = WP_PLUGIN_DIR . '/' . $this->plugin_slug;
-      $wp_filesystem->move($result['destination'], $proper_destination);
-      $result['destination'] = $proper_destination;
-      $result['destination_name'] = $this->plugin_slug;
-      return $response;
+    return $parsed_args;
+  }
+
+  /**
+   * Gets repository data from GitHub.
+   */
+  private function get_repository_info(): void {
+    if (null !== $this->github_response) {
+      return;
     }
+
+    $args = [
+      'method' => 'GET',
+      'timeout' => 5,
+      'redirection' => 5,
+      'httpversion' => '1.0',
+      'headers' => [
+        'Authorization' => 'token ' . $this->github_auth_token
+      ],
+      'sslverify' => true
+    ];
+    $request_uri = sprintf("https://api.github.com/repos/%s/%s/releases/", $this->github_username, $this->github_repository);
+
+    $request = wp_remote_get($request_uri, $args);
+    $response = json_decode(wp_remote_retrieve_body($request), true);
+
+    if (is_array($response)) {
+      $response = current($response);
+    }
+
+    if ($this->github_auth_token) {
+      $response['zipball_url'] = add_query_arg('access_token', $this->github_auth_token, $response['zipball_url']);
+    }
+
+    $this->github_response = $response;
+  }
+
+  /**
+   * Gets plugin data.
+   */
+  private function get_plugin_data(): void {
+    if (null !== $this->plugin_data) {
+      return;
+    }
+
+    $this->plugin_data = get_plugin_data($this->file);
   }
 }
