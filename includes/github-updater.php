@@ -63,7 +63,7 @@ if (!class_exists('GitHubPluginUpdater')) {
         'name' => $this->plugin_data['Name'],
         'slug' => $this->plugin_slug,
         'requires' => $this->plugin_data['RequiresWP'],
-        'tested' => $this->plugin_data['TestedUpTo'],
+        'tested' => $this->plugin_data['TestedUpTo'] ?? null,
         'version' => $this->latest_release['tag_name'],
         'author' => $this->plugin_data['AuthorName'],
         'author_profile' => $this->plugin_data['AuthorURI'],
@@ -103,8 +103,8 @@ if (!class_exists('GitHubPluginUpdater')) {
         return false;
       }
 
-      $this->latest_release = json_decode(wp_remote_retrieve_body($response));
-      $this->latest_release->version = preg_replace('/[^0-9.]/', '', $this->latest_release->tag_name);
+      $this->latest_release = json_decode(wp_remote_retrieve_body($response), true);
+      $this->latest_release["version"] = preg_replace('/[^0-9.]/', '', $this->latest_release["tag_name"]);
 
       if ($this->cache_allowed) {
         set_transient($this->latest_release_cache_key, $this->latest_release, 5 * MINUTE_IN_SECONDS);
@@ -125,14 +125,14 @@ if (!class_exists('GitHubPluginUpdater')) {
       }
 
       if (
-        version_compare($this->plugin_data["Version"], $this->latest_release->version, '<')) {
+        version_compare($this->plugin_data["Version"], $this->latest_release["version"], '<')) {
         $res = new stdClass();
         $res->slug = $this->plugin_slug;
         $res->plugin = $this->plugin_file; // misha-update-plugin/misha-update-plugin.php
-        $res->new_version = $this->latest_release->version;
-        $res->tested = $this->plugin_data["tested"];
+        $res->new_version = $this->latest_release["version"];
+        $res->tested = $this->plugin_data["TestedUpTo"] ?? null;
 
-        $res->package = $this->latest_release->zipball_url;
+        $res->package = $this->latest_release["zipball_url"];
 
         $transient->response[$res->plugin] = $res;
       }
