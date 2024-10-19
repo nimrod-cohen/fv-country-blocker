@@ -21,117 +21,60 @@ if (!class_exists('GitHubPluginUpdater')) {
 
   class GitHubPluginUpdater {
     private $plugin_slug;
-    private $version;
     private $cache_key;
-    private $release_notes_cache_key;
-    private $author;
+    private $latest_release_cache_key;
     private $cache_allowed;
     private $latest_release = null;
     private $plugin_file = null;
+    private $plugin_data = null;
 
-    private function get_plugin_details() {
+    private function get_plugin_data() {
       $this->plugin_file = $this->plugin_slug . '/' . $this->plugin_slug . '.php';
-      $plugin_data = get_plugin_data(WP_PLUGIN_DIR . '/' . $this->plugin_file);
-      $this->version = $plugin_data['Version'];
-      $this->author = $plugin_data['AuthorName'];
+      $this->plugin_data = get_plugin_data(WP_PLUGIN_DIR . '/' . $this->plugin_file);
     }
 
     public function __construct() {
       $file = __FILE__;
       $this->plugin_slug = explode('/', plugin_basename($file))[0];
       $this->cache_key = $this->plugin_slug . '_transient_data';
-      $this->release_notes_cache_key = $this->plugin_slug . '_release';
+      $this->latest_release_cache_key = $this->plugin_slug . '_release';
       $this->cache_allowed = true;
-      $this->get_plugin_details();
+      $this->get_plugin_data();
 
-      add_filter('plugins_api', [$this, 'info'], 20, 3);
+      add_filter('plugins_api', [$this, 'get_plugin_info'], 20, 3);
       add_filter('site_transient_update_plugins', [$this, 'update']);
       add_action('upgrader_process_complete', [$this, 'finish_install'], 10, 2);
       add_action('upgrader_post_install', [$this, 'fix_folder'], 10, 3);
     }
 
-    public function request() {
-
-      $remote = get_transient($this->cache_key);
-
-      if (false === $remote || !$this->cache_allowed) {
-
-        $url = 'https://raw.githubusercontent.com/' . $this->author . '/' . $this->plugin_slug . '/' . $this->latest_release->tag_name . '/release.json';
-
-        $remote = wp_remote_get(
-          $url,
-          [
-            'timeout' => 10,
-            'headers' => [
-              'Accept' => 'application/json'
-            ]
-          ]
-        );
-
-        if (
-          is_wp_error($remote)
-          || 200 !== wp_remote_retrieve_response_code($remote)
-          || empty(wp_remote_retrieve_body($remote))
-        ) {
-          return false;
-        }
-
-        set_transient($this->cache_key, $remote, 5 * MINUTE_IN_SECONDS);
-      }
-
-      $remote = json_decode(wp_remote_retrieve_body($remote));
-
-      return $remote;
-
-    }
-
-    function info($res, $action, $args) {
+    function get_plugin_info($res, $action, $args) {
       // do nothing if you're not getting plugin information right now
-      if ('plugin_information' !== $action) {
+      if ('plugin_information' !== $action || $this->plugin_slug !== $args->slug) {
+        return $res;
+      }
+      if (!$this->get_latest_release() || !$this->latest_release) {
         return $res;
       }
 
-      // do nothing if it is not our plugin
-      if ($this->plugin_slug !== $args->slug) {
-        return $res;
-      }
+      $plugin = [
+        'name' => $this->plugin_data['Name'],
+        'slug' => $this->plugin_slug,
+        'requires' => $this->plugin_data['RequiresWP'],
+        'tested' => $this->plugin_data['TestedUpTo'],
+        'version' => $this->latest_release['tag_name'],
+        'author' => $this->plugin_data['AuthorName'],
+        'author_profile' => $this->plugin_data['AuthorURI'],
+        'last_updated' => $this->latest_release['published_at'],
+        'homepage' => $this->plugin_data['PluginURI'],
+        'short_description' => $this->plugin_data['Description'],
+        'sections' => [
+          'Description' => $this->plugin_data['Description'],
+          'Updates' => $this->latest_release['body']
+        ],
+        'download_link' => $this->latest_release['zipball_url']
+      ];
 
-      // get updates
-      $remote = $this->request();
-
-      if (!$remote) {
-        return $res;
-      }
-
-      $res = new stdClass();
-
-      $res->name = $remote->name;
-      $res->slug = $remote->slug;
-      $res->version = $remote->version;
-      $res->tested = $remote->tested;
-      $res->requires = $remote->requires;
-      $res->author = $remote->author;
-      $res->author_profile = $remote->author_profile;
-      $res->download_link = $remote->download_url;
-      $res->trunk = $remote->download_url;
-      $res->requires_php = $remote->requires_php;
-      $res->last_updated = $remote->last_updated;
-
-      $res->sections = array(
-        'description' => $remote->sections->description,
-        'installation' => $remote->sections->installation,
-        'changelog' => $remote->sections->changelog
-      );
-
-      if (!empty($remote->banners)) {
-        $res->banners = array(
-          'low' => $remote->banners->low,
-          'high' => $remote->banners->high
-        );
-      }
-
-      return $res;
-
+      return (object) $plugin;
     }
 
     private function get_latest_release() {
@@ -141,7 +84,7 @@ if (!class_exists('GitHubPluginUpdater')) {
 
       $transient = null;
       if ($this->cache_allowed) {
-        $transient = get_transient($this->release_notes_cache_key);
+        $transient = get_transient($this->latest_release_cache_key);
       }
 
       if ($transient) {
@@ -149,7 +92,7 @@ if (!class_exists('GitHubPluginUpdater')) {
         return true;
       }
 
-      $github_api_url = 'https://api.github.com/repos/' . $this->author . '/' . $this->plugin_slug . '/releases/latest';
+      $github_api_url = 'https://api.github.com/repos/' . $this->plugin_data['AuthorName'] . '/' . $this->plugin_slug . '/releases/latest';
 
       // Make the API request to GitHub
       $response = wp_remote_get($github_api_url);
@@ -160,7 +103,7 @@ if (!class_exists('GitHubPluginUpdater')) {
       $this->latest_release = json_decode(wp_remote_retrieve_body($response));
 
       if ($this->cache_allowed) {
-        set_transient($this->release_notes_cache_key, $this->latest_release, 5 * MINUTE_IN_SECONDS);
+        set_transient($this->latest_release_cache_key, $this->latest_release, 5 * MINUTE_IN_SECONDS);
       }
 
       return true;
@@ -173,23 +116,17 @@ if (!class_exists('GitHubPluginUpdater')) {
       }
 
       // GitHub API URL for the latest release
-      if (!$this->get_latest_release()) {
+      if (!$this->get_latest_release() || !$this->latest_release) {
         return $transient;
       }
 
-      $remote = $this->request();
-
       if (
-        $remote
-        && version_compare($this->version, $remote->version, '<')
-        && version_compare($remote->requires, get_bloginfo('version'), '<=')
-        && version_compare($remote->requires_php, PHP_VERSION, '<')
-      ) {
+        version_compare($this->plugin_data["Version"], $this->latest_release->version, '<')) {
         $res = new stdClass();
         $res->slug = $this->plugin_slug;
         $res->plugin = $this->plugin_file; // misha-update-plugin/misha-update-plugin.php
-        $res->new_version = $remote->version;
-        $res->tested = $remote->tested;
+        $res->new_version = $this->latest_release->version;
+        $res->tested = $this->plugin_data["tested"];
 
         $res->package = $this->latest_release->zipball_url;
 
@@ -212,7 +149,7 @@ if (!class_exists('GitHubPluginUpdater')) {
       // just clean the cache when new plugin version is installed
       if ($this->cache_allowed) {
         delete_transient($this->cache_key);
-        delete_transient($this->release_notes_cache_key);
+        delete_transient($this->latest_release_cache_key);
       }
     }
 
