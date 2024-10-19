@@ -5,7 +5,7 @@ function fv_country_blocker_admin_page() {
   $countries = FV_GeoIP::get_countries_list();
 
   // Get currently blocked countries
-  $blocked_countries = get_option('fv_country_blocker_blocked_countries', array());
+  $blocked_countries = get_option('fv_country_blocker_blocked_countries', []);
 
   // Ensure $blocked_countries is an array
   if (!is_array($blocked_countries)) {
@@ -14,7 +14,7 @@ function fv_country_blocker_admin_page() {
 
   if (isset($_POST['submit'])) {
     // Update blocked countries
-    $blocked_countries = isset($_POST['blocked_countries']) ? $_POST['blocked_countries'] : array();
+    $blocked_countries = isset($_POST['blocked_countries']) ? $_POST['blocked_countries'] : [];
     update_option('fv_country_blocker_blocked_countries', $blocked_countries);
 
     // Update license key
@@ -28,6 +28,10 @@ function fv_country_blocker_admin_page() {
     // Update custom blocking HTML
     $custom_blocking_html = wp_kses_post($_POST['fv_country_blocker_custom_blocking_html']);
     update_option('fv_country_blocker_custom_blocking_html', $custom_blocking_html);
+
+    // Update custom user IP header
+    $custom_user_ip_header = sanitize_text_field($_POST['fv_country_blocker_custom_user_ip_header']);
+    update_option('fv_country_blocker_custom_user_ip_header', $custom_user_ip_header);
 
     echo '<div class="updated"><p>Settings saved.</p></div>';
   }
@@ -44,6 +48,16 @@ function fv_country_blocker_admin_page() {
     $last_update = date('Y-m-d H:i:s', filemtime($actual_mmdb_path));
   } else {
     $last_update = "<span class='error'>MMDB file cannot be found</span>";
+
+    // Check if the license key is set and the custom path is empty - so we can do something about it
+    if (!empty($license_key) && empty($custom_mmdb_path)) {
+      $updater = new FV_Country_Blocker_Updater();
+      $updater->update_database();
+    }
+
+    if (file_exists($custom_mmdb_path)) {
+      $last_update = date('Y-m-d H:i:s', filemtime($custom_mmdb_path));
+    }
   }
 
   // Get the custom blocking HTML
@@ -93,6 +107,13 @@ function fv_country_blocker_admin_page() {
                     <th scope="row">Last Update</th>
                     <td><?php echo $last_update; ?></td>
                   </tr>
+                  <tr valign="top">
+                    <th scope="row">Custom User IP header</th>
+                    <td>
+                      <input type="text" name="fv_country_blocker_custom_user_ip_header" value="<?php echo esc_attr(get_option('fv_country_blocker_custom_user_ip_header')); ?>" />
+                      <p class="description">Your current IP is <?php echo FV_GeoIP::get_user_ip(); ?><br/>If you are behind a proxy/CDN, you can set a custom user IP header here. Leave empty to use the defaults</p>
+                    </td>
+                  </tr>
                 </table>
             </div>
 
@@ -110,9 +131,7 @@ function fv_country_blocker_admin_page() {
                           <?php checked(in_array($code, $blocked_countries));?>>
                           <img src="<?php echo esc_url(fv_country_blocker_get_flag_url($code)); ?>"
                             alt="<?php echo esc_attr($names["name"]); ?> flag"
-                            class="flag">
-                          <?php echo esc_html($names["name"]); ?>
-                        </label>
+                            class="flag"><?php echo esc_html($names["name"]); ?></label>
                     <?php endforeach;?>
                 </div>
             </div>

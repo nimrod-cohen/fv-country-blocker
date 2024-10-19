@@ -209,7 +209,7 @@ class FV_GeoIP {
       'SB' => ['name' => 'Solomon Islands', 'long_name' => 'Solomon Islands'],
       'SO' => ['name' => 'Somalia', 'long_name' => 'Somalia'],
       'ZA' => ['name' => 'South Africa', 'long_name' => 'South Africa'],
-      'GS' => ['name' => 'S.Georgia & Sandwich Isles.', 'long_name' => 'South Georgia and the South Sandwich Islands'],
+      'GS' => ['name' => 'S.Georgia & Sandwich Isles', 'long_name' => 'South Georgia and the South Sandwich Islands'],
       'SS' => ['name' => 'South Sudan', 'long_name' => 'South Sudan'],
       'ES' => ['name' => 'Spain', 'long_name' => 'Spain'],
       'LK' => ['name' => 'Sri Lanka', 'long_name' => 'Sri Lanka'],
@@ -256,13 +256,31 @@ class FV_GeoIP {
   }
 
   public static function get_user_ip() {
-    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-      return $_SERVER['HTTP_CLIENT_IP'];
-    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-      return $_SERVER['HTTP_X_FORWARDED_FOR'];
-    } else {
-      return $_SERVER['REMOTE_ADDR'];
+    $possible_headers = [
+      'HTTP_CLIENT_IP',
+      'REMOTE_ADDR',
+      'HTTP_X_FORWARDED_FOR',
+      'HTTP_X_FORWARDED',
+      'HTTP_FORWARDED_FOR',
+      'HTTP_FORWARDED',
+      'HTTP_X_REAL_IP'
+    ];
+
+    //check if custom user IP header is set
+    $custom_user_ip_header = get_option('fv_country_blocker_custom_user_ip_header', '');
+
+    if (!empty($custom_user_ip_header)) {
+      //push as first element
+      array_unshift($possible_headers, $custom_user_ip_header);
     }
+
+    foreach ($possible_headers as $header) {
+      if (!empty($_SERVER[$header])) {
+        return $_SERVER[$header];
+      }
+    }
+
+    return false;
   }
 
   public static function get_visitor_country($ip) {
