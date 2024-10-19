@@ -29,6 +29,9 @@ if (!class_exists('GitHubPluginUpdater')) {
     private $plugin_data = null;
 
     private function get_plugin_data() {
+      if ($this->plugin_data) {
+        return;
+      }
       $this->plugin_file = $this->plugin_slug . '/' . $this->plugin_slug . '.php';
       $this->plugin_data = get_plugin_data(WP_PLUGIN_DIR . '/' . $this->plugin_file);
     }
