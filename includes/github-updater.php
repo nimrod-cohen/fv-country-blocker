@@ -131,11 +131,9 @@ if (!class_exists('GitHubPluginUpdater')) {
         $res->package = $this->latest_release->zipball_url;
 
         $transient->response[$res->plugin] = $res;
-
       }
 
       return $transient;
-
     }
 
     public function finish_install($upgrader, $options) {
