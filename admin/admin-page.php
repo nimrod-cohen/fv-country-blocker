@@ -76,66 +76,13 @@ function fv_country_blocker_admin_page() {
         <h2 class="nav-tab-wrapper">
             <a href="#settings" class="nav-tab nav-tab-active">Settings</a>
             <a href="#countries" class="nav-tab">Blocked Countries</a>
+            <a href="#test-ip" class="nav-tab">Test IP</a>
         </h2>
 
         <form action="" method="post">
-            <div id="settings" class="tab-content">
-                <h2>MaxMind MMDB Settings</h2>
-                <table class="form-table">
-                  <tr valign="top">
-                      <th scope="row">MaxMind License Key</th>
-                      <td>
-                        <input type="text" name="fv_country_blocker_license_key" class="maxmind-input" value="<?php echo esc_attr(get_option('fv_country_blocker_license_key')); ?>" />
-                        <p class="description">This is only required if the custom path setting is empty, and you need to download the mmdb file regularly for this WP install independently</p>
-                      </td>
-                  </tr>
-                  <tr valign="top">
-                      <th scope="row">Custom MMDB File Path</th>
-                      <td>
-                          <input type="text" name="fv_country_blocker_custom_mmdb_path" value="<?php echo esc_attr($custom_mmdb_path); ?>" class="maxmind-input" />
-                          <p class="description">Leave empty to use the current WP installation path. if you have multiple WP installs, and want to use the same MMDB for all of them, you can use the custom path, it is then your responsibility to make sure that the file is downloaded regularly.</p>
-                      </td>
-                  </tr>
-                  <tr valign="top">
-                        <th scope="row">Custom Blocking HTML</th>
-                        <td>
-                            <textarea name="fv_country_blocker_custom_blocking_html" rows="10" cols="50" class="large-text code"><?php echo esc_textarea($custom_blocking_html); ?></textarea>
-                            <p class="description">Enter the HTML to be displayed when a visit is blocked.</p>
-                        </td>
-                  </tr>
-                  <tr valign="top">
-                    <th scope="row">Last Update</th>
-                    <td><?php echo $last_update; ?></td>
-                  </tr>
-                  <tr valign="top">
-                    <th scope="row">Custom User IP header</th>
-                    <td>
-                      <input type="text" name="fv_country_blocker_custom_user_ip_header" value="<?php echo esc_attr(get_option('fv_country_blocker_custom_user_ip_header')); ?>" />
-                      <p class="description">Your current IP is <?php echo FV_GeoIP::get_user_ip(); ?><br/>If you are behind a proxy/CDN, you can set a custom user IP header here. Leave empty to use the defaults</p>
-                    </td>
-                  </tr>
-                </table>
-            </div>
-
-            <div id="countries" class="tab-content" style="display:none;">
-                <h2>Select countries to block</h2>
-                <input type="text" id="country-search" placeholder="Search countries..." style="margin-bottom: 10px; width: 100%; max-width: 400px;">
-                <div class="fv-country-list" style="max-height: 400px; overflow-y: scroll; border: 1px solid #ddd; padding: 10px;">
-                    <?php foreach ($countries as $code => $names): ?>
-                        <label class="country-item"
-                          data-code="<?php echo esc_attr(strtolower($code)); ?>"
-                          data-name="<?php echo esc_attr(strtolower($names["name"])); ?>"
-                          title="<?php echo esc_attr(strtolower($names["long_name"])); ?>"
-                          data-long-name="<?php echo esc_attr(strtolower($names["long_name"])); ?>">
-                          <input type="checkbox" name="blocked_countries[]" value="<?php echo esc_attr($code); ?>"
-                          <?php checked(in_array($code, $blocked_countries));?>>
-                          <img src="<?php echo esc_url(fv_country_blocker_get_flag_url($code)); ?>"
-                            alt="<?php echo esc_attr($names["name"]); ?> flag"
-                            class="flag"><?php echo esc_html($names["name"]); ?></label>
-                    <?php endforeach;?>
-                </div>
-            </div>
-
+            <?php require_once 'settings.php';?>
+            <?php require_once 'countries.php';?>
+            <?php require_once 'test-ip.php'?>
             <?php submit_button();?>
         </form>
     </div>

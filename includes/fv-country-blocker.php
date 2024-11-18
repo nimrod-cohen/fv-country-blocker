@@ -52,6 +52,28 @@ class FV_Country_Blocker {
 
   private function define_public_hooks() {
     add_action('init', [$this, 'check_visitor_country']);
+    add_action('wp_ajax_fv_country_blocker_test_ip', [$this, 'test_ip']);
+  }
+
+  public function test_ip() {
+    $ip = trim($_POST['ip']);
+
+    //validate nonce
+    if (!wp_verify_nonce($_POST['nonce'], 'fv-country-blocker-nonce')) {
+      wp_send_json_error('Invalid nonce');
+    }
+
+    if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+      wp_send_json_error('Invalid IP address');
+    }
+
+    $country = FV_GeoIP::get_visitor_country($ip);
+
+    if (!$country) {
+      wp_send_json_error('Could not determine country');
+    }
+
+    wp_send_json_success($country);
   }
 
   public function add_admin_menu() {

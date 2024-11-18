@@ -82,3 +82,36 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 });
+
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.querySelector('button.do-test-ip');
+
+  btn.addEventListener('click', async e => {
+    e.preventDefault();
+    try {
+      e.target.disabled = true;
+
+      const response = await fetch(fvCountryBlocker.ajax_url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          action: 'fv_country_blocker_test_ip',
+          nonce: fvCountryBlocker.nonce,
+          ip: document.querySelector('input[name="test-ip"]').value
+        })
+      });
+
+      const data = await response.json();
+      const result = document.querySelector('.test-ip-result');
+      if (data.success) {
+        result.textContent = data.country;
+      } else {
+        result.textContent = data.data;
+      }
+    } finally {
+      e.target.disabled = false;
+    }
+  });
+});
