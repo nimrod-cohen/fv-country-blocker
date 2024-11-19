@@ -103,12 +103,23 @@ document.addEventListener('DOMContentLoaded', () => {
         })
       });
 
+      const capitalize = s =>
+        s
+          .split(' ')
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ');
+
       const data = await response.json();
       const result = document.querySelector('.test-ip-result');
+      result.innerHTML = '';
       if (data.success) {
-        result.textContent = data.country;
+        const country = document.querySelector(`label.country-item[data-code='${data.data.toLowerCase()}']`);
+        const img = country.querySelector('img');
+        const clone = img.cloneNode(true);
+        result.innerHTML = `<span>${capitalize(country.dataset.longName)}</span>`;
+        result.insertBefore(clone, result.firstChild);
       } else {
-        result.textContent = data.data;
+        result.textContent = `Failed: ${data.data}`;
       }
     } finally {
       e.target.disabled = false;
