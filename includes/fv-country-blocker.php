@@ -47,7 +47,9 @@ class FV_Country_Blocker {
     add_action('fv_country_blocker_update_db', [$this, 'update_geoip_database']);
 
     //checking for plugin updates
-    add_action('admin_init', function () {new GitHubPluginUpdater();});
+    add_action('admin_init', function () {
+      $updater = new GitHubPluginUpdater(FV_COUNTRY_BLOCKER_PLUGIN_DIR . 'fv-country-blocker.php');
+    });
   }
 
   private function define_public_hooks() {
