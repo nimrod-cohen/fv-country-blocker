@@ -37,7 +37,7 @@ function fv_country_blocker_admin_page() {
   }
 
   // Get the plugin version
-  $plugin_version = fv_country_blocker_get_plugin_data('Version');
+  $plugin_version = FV_Country_Blocker::get_plugin_data('Version');
 
   // Get the custom MMDB path
   $custom_mmdb_path = get_option('fv_country_blocker_custom_mmdb_path', '');
