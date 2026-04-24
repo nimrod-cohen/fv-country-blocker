@@ -17,9 +17,10 @@ class FV_Captcha {
     $token = self::issue_token($answer, $nonce);
     $img = self::image_data_url("$a + $b = ?");
 
-    $html = '<div class="fv-captcha" style="display:flex;align-items:center;gap:10px">';
-    $html .= '<img src="' . esc_attr($img) . '" alt="captcha" class="fv-captcha-image" style="border:1px solid #e0e0e0;border-radius:4px" />';
-    $html .= '<input type="text" name="fv_captcha_answer" inputmode="numeric" pattern="[0-9]*" autocomplete="off" required style="width:80px" />';
+    $input_style = 'width:90px;padding:8px 10px;border:1px solid #ccc;border-radius:4px;font-size:16px;text-align:center;background:#fff;color:#111;box-sizing:border-box';
+    $html = '<div class="fv-captcha" style="display:inline-flex;align-items:center;gap:10px">';
+    $html .= '<img src="' . esc_attr($img) . '" alt="captcha" class="fv-captcha-image" style="border:1px solid #e0e0e0;border-radius:4px;display:block" />';
+    $html .= '<input type="text" name="fv_captcha_answer" inputmode="numeric" pattern="[0-9]*" autocomplete="off" required style="' . esc_attr($input_style) . '" />';
     $html .= '<input type="hidden" name="fv_captcha_token" value="' . esc_attr($token) . '" />';
     $html .= '<input type="hidden" name="fv_captcha_moves" value="0" />';
     $html .= '<input type="hidden" name="fv_captcha_interactions" value="0" />';
