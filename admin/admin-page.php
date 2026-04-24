@@ -81,12 +81,14 @@ function fv_country_blocker_admin_page() {
         <h2 class="nav-tab-wrapper">
             <a href="#settings" class="nav-tab nav-tab-active">Settings</a>
             <a href="#countries" class="nav-tab">Blocked Countries</a>
+            <a href="#bot-defense" class="nav-tab">Bot Defense</a>
             <a href="#test-ip" class="nav-tab">Test IP</a>
         </h2>
 
         <form action="" method="post">
             <?php require_once 'settings.php';?>
             <?php require_once 'countries.php';?>
+            <?php require_once 'bot-defense.php';?>
             <?php require_once 'test-ip.php'?>
             <?php submit_button();?>
         </form>
