@@ -1,5 +1,5 @@
 <div id="test-ip" class="tab-content">
-    <h2>Test IP Country</h2>
+    <h2>Test IP</h2>
     <table class="form-table">
       <tr valign="top">
           <th scope="row">IP</th>
