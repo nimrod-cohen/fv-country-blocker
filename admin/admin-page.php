@@ -33,6 +33,11 @@ function fv_country_blocker_admin_page() {
     $custom_user_ip_header = sanitize_text_field($_POST['fv_country_blocker_custom_user_ip_header']);
     update_option('fv_country_blocker_custom_user_ip_header', $custom_user_ip_header);
 
+    // Bot defense toggles (checkboxes: present => '1', absent => '0')
+    update_option('fv_country_blocker_enable_tor', !empty($_POST['fv_country_blocker_enable_tor']) ? '1' : '0');
+    update_option('fv_country_blocker_enable_datacenter', !empty($_POST['fv_country_blocker_enable_datacenter']) ? '1' : '0');
+    update_option('fv_country_blocker_enable_captcha', !empty($_POST['fv_country_blocker_enable_captcha']) ? '1' : '0');
+
     echo '<div class="updated"><p>Settings saved.</p></div>';
   }
 

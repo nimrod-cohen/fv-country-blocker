@@ -34,4 +34,30 @@
         </td>
       </tr>
     </table>
+
+    <h2>Bot Defense</h2>
+    <p class="description">Reusable helpers for public forms (<code>FV_BotDetector::isSuspicious($ip)</code>, <code>FV_Captcha::render()</code>, <code>FV_Captcha::verify_from_post()</code>). Disabling a feature makes its helpers no-op globally.</p>
+    <table class="form-table">
+      <tr valign="top">
+        <th scope="row">Block Tor exit IPs</th>
+        <td>
+          <label><input type="checkbox" name="fv_country_blocker_enable_tor" value="1" <?php checked(get_option('fv_country_blocker_enable_tor', '1'), '1'); ?> /> Enabled</label>
+          <p class="description">Maintains an hourly-refreshed list of Tor exit relays. When disabled, <code>FV_BotDetector::isTor()</code> returns false.</p>
+        </td>
+      </tr>
+      <tr valign="top">
+        <th scope="row">Block datacenter / VPN IPs</th>
+        <td>
+          <label><input type="checkbox" name="fv_country_blocker_enable_datacenter" value="1" <?php checked(get_option('fv_country_blocker_enable_datacenter', '1'), '1'); ?> /> Enabled</label>
+          <p class="description">Maintains a daily-refreshed X4BNet datacenter/VPN CIDR list. When disabled, <code>FV_BotDetector::isDatacenter()</code> returns false.</p>
+        </td>
+      </tr>
+      <tr valign="top">
+        <th scope="row">CAPTCHA for public forms</th>
+        <td>
+          <label><input type="checkbox" name="fv_country_blocker_enable_captcha" value="1" <?php checked(get_option('fv_country_blocker_enable_captcha', '1'), '1'); ?> /> Enabled</label>
+          <p class="description">When disabled, <code>FV_Captcha::render()</code> produces no output and <code>FV_Captcha::verify_from_post()</code> always succeeds.</p>
+        </td>
+      </tr>
+    </table>
 </div>

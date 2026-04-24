@@ -3,13 +3,21 @@ defined('ABSPATH') || exit;
 
 class FV_Captcha {
   const OPTION_SECRET = 'fv_captcha_secret';
+  const OPT_ENABLED = 'fv_country_blocker_enable_captcha';
   const MIN_DWELL_SECONDS = 3;
   const MIN_MOVES = 1;
   const MIN_INTERACTIONS = 1;
 
   private static $script_printed = false;
 
+  public static function is_enabled() {
+    return get_option(self::OPT_ENABLED, '1') === '1';
+  }
+
   public static function render() {
+    if (!self::is_enabled()) {
+      return;
+    }
     $a = mt_rand(1, 9);
     $b = mt_rand(1, 9);
     $answer = $a + $b;
@@ -31,6 +39,9 @@ class FV_Captcha {
   }
 
   public static function verify_from_post() {
+    if (!self::is_enabled()) {
+      return ['ok' => true, 'disabled' => true];
+    }
     return self::verify(
       $_POST['fv_captcha_token'] ?? '',
       $_POST['fv_captcha_answer'] ?? '',
