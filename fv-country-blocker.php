@@ -3,7 +3,7 @@
  * Plugin Name: FV Country Blocker
  * Plugin URI: https://github.com/nimrod-cohen/fv-country-blocker
  * Description: Block visitors from specific countries using MaxMind GeoIP database.
- * Version: 1.4.0
+ * Version: 1.5.0
  * Author: nimrod-cohen
  * Author URI: https://github.com/nimrod-cohen/fv-country-blocker
  * License: GPL-2.0+
@@ -189,6 +189,12 @@ class FV_Country_Blocker {
 
     if ($force && $ip == '127.0.0.1') {
       $ip = $force;
+    }
+
+    // Tor / datacenter block — each toggle gates its own list via FV_BotDetector.
+    if (class_exists('FV_BotDetector') && FV_BotDetector::isSuspicious($ip)) {
+      status_header(403);
+      die(get_option('fv_country_blocker_custom_blocking_html', ''));
     }
 
     $visitor_country = FV_GeoIP::get_visitor_country($ip);
