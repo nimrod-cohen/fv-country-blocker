@@ -66,19 +66,22 @@ document.addEventListener('DOMContentLoaded', function () {
   var tabs = document.querySelectorAll('.nav-tab');
   var contents = document.querySelectorAll('.tab-content');
 
+  function activate(target) {
+    tabs.forEach(function (t) {
+      t.classList.toggle('nav-tab-active', t.getAttribute('href') === '#' + target);
+    });
+    contents.forEach(function (content) {
+      content.style.display = content.id === target ? 'block' : 'none';
+    });
+  }
+
+  var initial = document.querySelector('.nav-tab.nav-tab-active')?.getAttribute('href')?.substring(1);
+  if (initial) activate(initial);
+
   tabs.forEach(function (tab) {
     tab.addEventListener('click', function (e) {
       e.preventDefault();
-      var target = this.getAttribute('href').substring(1);
-
-      tabs.forEach(function (t) {
-        t.classList.remove('nav-tab-active');
-      });
-      this.classList.add('nav-tab-active');
-
-      contents.forEach(function (content) {
-        content.style.display = content.id === target ? 'block' : 'none';
-      });
+      activate(this.getAttribute('href').substring(1));
     });
   });
 });
