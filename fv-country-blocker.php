@@ -3,7 +3,7 @@
  * Plugin Name: FV Country Blocker
  * Plugin URI: https://github.com/nimrod-cohen/fv-country-blocker
  * Description: Block visitors from specific countries using MaxMind GeoIP database.
- * Version: 1.5.2
+ * Version: 1.5.3
  * Author: nimrod-cohen
  * Author URI: https://github.com/nimrod-cohen/fv-country-blocker
  * License: GPL-2.0+
@@ -183,6 +183,40 @@ class FV_Country_Blocker {
     $updater->update_database();
   }
 
+  public static function is_whitelisted_ip($ip) {
+    if (empty($ip)) return false;
+
+    // Server's own IPs are always allowed — both the interface that received
+    // the request (SERVER_ADDR) and the server's external/public IP (for
+    // server-to-self calls that loop out to the public hostname).
+    if ($ip === ($_SERVER['SERVER_ADDR'] ?? '')) return true;
+    if ($ip === self::get_server_external_ip()) return true;
+
+    $raw = get_option('fv_country_blocker_whitelisted_ips', '');
+    if (empty($raw)) return false;
+
+    $list = array_filter(array_map('trim', preg_split('/[\s,]+/', $raw)));
+    return in_array($ip, $list, true);
+  }
+
+  public static function get_server_external_ip() {
+    $cached = get_transient('fv_country_blocker_server_external_ip');
+    if ($cached !== false) return $cached;
+
+    $response = wp_remote_get('https://api.ipify.org', ['timeout' => 3]);
+    $ip = '';
+    if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
+      $ip = trim(wp_remote_retrieve_body($response));
+      if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+        $ip = '';
+      }
+    }
+    // Cache either the resolved IP (24h) or a failure marker (5min) to avoid
+    // hammering ipify on every request.
+    set_transient('fv_country_blocker_server_external_ip', $ip, $ip ? DAY_IN_SECONDS : 5 * MINUTE_IN_SECONDS);
+    return $ip;
+  }
+
   public function check_visitor_country() {
     $force = $_GET["force_country_ip"] ?? false;
 
@@ -192,7 +226,8 @@ class FV_Country_Blocker {
     if (!$force && (
       current_user_can('administrator')
       || wp_get_environment_type() != 'production'
-      || $ip == '127.0.0.1')) {
+      || $ip == '127.0.0.1'
+      || self::is_whitelisted_ip($ip))) {
       return;
     }
 

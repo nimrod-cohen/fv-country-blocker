@@ -33,6 +33,13 @@
           <p class="description">Your current IP is <?php echo FV_GeoIP::get_user_ip(); ?><br/>If you are behind a proxy/CDN, you can set a custom user IP header here. Leave empty to use the defaults</p>
         </td>
       </tr>
+      <tr valign="top">
+        <th scope="row">Whitelisted IPs</th>
+        <td>
+          <textarea name="fv_country_blocker_whitelisted_ips" rows="4" cols="50" class="large-text code"><?php echo esc_textarea(get_option('fv_country_blocker_whitelisted_ips', '')); ?></textarea>
+          <p class="description">One IP per line (or comma-separated). These IPs bypass all blocking checks. The server's own IPs are always whitelisted: internal <code><?php echo esc_html($_SERVER['SERVER_ADDR'] ?? 'unknown'); ?></code>, external <code><?php echo esc_html(FV_Country_Blocker::get_server_external_ip() ?: 'unresolved'); ?></code>.</p>
+        </td>
+      </tr>
     </table>
 
 </div>

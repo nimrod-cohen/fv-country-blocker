@@ -33,6 +33,13 @@ function fv_country_blocker_admin_page() {
     $custom_user_ip_header = sanitize_text_field($_POST['fv_country_blocker_custom_user_ip_header']);
     update_option('fv_country_blocker_custom_user_ip_header', $custom_user_ip_header);
 
+    // Update whitelisted IPs — accept newline or comma separated, validate each
+    $whitelisted_raw = $_POST['fv_country_blocker_whitelisted_ips'] ?? '';
+    $whitelisted_ips = array_filter(array_map('trim', preg_split('/[\s,]+/', $whitelisted_raw)), function ($ip) {
+      return filter_var($ip, FILTER_VALIDATE_IP);
+    });
+    update_option('fv_country_blocker_whitelisted_ips', implode("\n", $whitelisted_ips));
+
     // Bot defense toggles (checkboxes: present => '1', absent => '0')
     update_option('fv_country_blocker_enable_tor', !empty($_POST['fv_country_blocker_enable_tor']) ? '1' : '0');
     update_option('fv_country_blocker_enable_datacenter', !empty($_POST['fv_country_blocker_enable_datacenter']) ? '1' : '0');
