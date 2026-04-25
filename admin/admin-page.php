@@ -40,6 +40,11 @@ function fv_country_blocker_admin_page() {
     });
     update_option('fv_country_blocker_whitelisted_ips', implode("\n", $whitelisted_ips));
 
+    // Update trusted User-Agent substrings — one pattern per line
+    $trusted_ua_raw = $_POST['fv_country_blocker_trusted_user_agents'] ?? '';
+    $trusted_uas = array_filter(array_map('trim', preg_split('/\r?\n/', $trusted_ua_raw)), 'strlen');
+    update_option('fv_country_blocker_trusted_user_agents', implode("\n", $trusted_uas));
+
     // Bot defense toggles (checkboxes: present => '1', absent => '0')
     update_option('fv_country_blocker_enable_tor', !empty($_POST['fv_country_blocker_enable_tor']) ? '1' : '0');
     update_option('fv_country_blocker_enable_datacenter', !empty($_POST['fv_country_blocker_enable_datacenter']) ? '1' : '0');

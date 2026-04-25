@@ -40,6 +40,13 @@
           <p class="description">One IP per line (or comma-separated). These IPs bypass all blocking checks. The server's own IPs are always whitelisted: internal <code><?php echo esc_html($_SERVER['SERVER_ADDR'] ?? 'unknown'); ?></code>, external <code><?php echo esc_html(FV_Country_Blocker::get_server_external_ip() ?: 'unresolved'); ?></code>.</p>
         </td>
       </tr>
+      <tr valign="top">
+        <th scope="row">Trusted User-Agents</th>
+        <td>
+          <textarea name="fv_country_blocker_trusted_user_agents" rows="4" cols="50" class="large-text code"><?php echo esc_textarea(get_option('fv_country_blocker_trusted_user_agents', '')); ?></textarea>
+          <p class="description">One pattern per line. Visitors whose User-Agent contains any of these substrings (case-insensitive) bypass all blocking. Useful for uptime monitors that rotate datacenter IPs (e.g. <code>UptimeRobot/</code>).</p>
+        </td>
+      </tr>
     </table>
 
 </div>
