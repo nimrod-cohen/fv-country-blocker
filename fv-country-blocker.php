@@ -3,7 +3,7 @@
  * Plugin Name: FV Country Blocker
  * Plugin URI: https://github.com/nimrod-cohen/fv-country-blocker
  * Description: Block visitors from specific countries using MaxMind GeoIP database.
- * Version: 1.5.5
+ * Version: 1.5.6
  * Author: nimrod-cohen
  * Author URI: https://github.com/nimrod-cohen/fv-country-blocker
  * License: GPL-2.0+
@@ -39,6 +39,30 @@ class FV_Country_Blocker {
 
     add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_styles']);
     add_filter('plugin_action_links_' . plugin_basename(__FILE__), [$this, 'plugin_action_links']);
+    add_action('admin_bar_menu', [$this, 'add_admin_bar_link'], 100);
+    add_action('admin_head', [$this, 'admin_bar_icon_styles']);
+    add_action('wp_head', [$this, 'admin_bar_icon_styles']);
+  }
+
+  public function add_admin_bar_link($wp_admin_bar) {
+    if (!current_user_can('manage_options')) return;
+    $wp_admin_bar->add_node([
+      'id' => 'fv-country-blocker-settings',
+      'title' => '<span class="ab-icon dashicons dashicons-shield"></span><span class="ab-label">Country Blocker</span>',
+      'href' => admin_url('options-general.php?page=fv-country-blocker'),
+      'meta' => ['title' => 'FV Country Blocker settings']
+    ]);
+  }
+
+  public function admin_bar_icon_styles() {
+    if (!is_admin_bar_showing() || !current_user_can('manage_options')) return;
+    echo '<style>
+      #wpadminbar #wp-admin-bar-fv-country-blocker-settings .ab-icon:before {
+        font-family: dashicons !important;
+        content: "\f332";
+        top: 3px;
+      }
+    </style>';
   }
 
   // Get plugin data
