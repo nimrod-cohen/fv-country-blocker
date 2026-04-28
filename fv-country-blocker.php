@@ -3,7 +3,7 @@
  * Plugin Name: FV Country Blocker
  * Plugin URI: https://github.com/nimrod-cohen/fv-country-blocker
  * Description: Block visitors from specific countries using MaxMind GeoIP database.
- * Version: 1.5.6
+ * Version: 1.5.7
  * Author: nimrod-cohen
  * Author URI: https://github.com/nimrod-cohen/fv-country-blocker
  * License: GPL-2.0+
@@ -276,9 +276,13 @@ class FV_Country_Blocker {
     }
 
     // Tor / datacenter block — each toggle gates its own list via FV_BotDetector.
-    if (class_exists('FV_BotDetector') && FV_BotDetector::isSuspicious($ip)) {
-      status_header(403);
-      die(get_option('fv_country_blocker_custom_blocking_html', ''));
+    if (class_exists('FV_BotDetector')) {
+      if (FV_BotDetector::isTor($ip)) {
+        self::send_block_response('tor', $ip);
+      }
+      if (FV_BotDetector::isDatacenter($ip)) {
+        self::send_block_response('datacenter', $ip);
+      }
     }
 
     $visitor_country = FV_GeoIP::get_visitor_country($ip);
@@ -290,13 +294,22 @@ class FV_Country_Blocker {
     $blocked = get_option('fv_country_blocker_blocked_countries', []);
 
     if (in_array($visitor_country, $blocked)) {
-      // Redirect or display a message to the visitor
-      $custom_blocking_html = get_option('fv_country_blocker_custom_blocking_html', '');
-      status_header(403);
-      die($custom_blocking_html);
+      self::send_block_response('country:' . $visitor_country, $ip);
     }
 
     //all good.
+  }
+
+  private static function send_block_response($reason, $ip) {
+    status_header(403);
+    $html = get_option('fv_country_blocker_custom_blocking_html', '');
+    if ($html === '') {
+      $html = '<h1>Access Denied</h1><p>Sorry, this site is not available from your location.</p>';
+    }
+    $ts = gmdate('Y-m-d H:i:s') . ' UTC';
+    $html .= '<div style="position:fixed;bottom:0;left:0;right:0;padding:8px 12px;background:#f5f5f5;color:#666;font-family:monospace;font-size:11px;text-align:center;border-top:1px solid #ddd">Reference: '
+      . esc_html($ts) . ' &middot; ' . esc_html($ip) . ' &middot; ' . esc_html($reason) . '</div>';
+    die($html);
   }
 
   public function run() {
