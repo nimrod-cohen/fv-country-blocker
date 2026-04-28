@@ -4,11 +4,14 @@ defined('ABSPATH') || exit;
 class FV_BotDetector {
   const TOR_LIST_URL = 'https://check.torproject.org/torbulkexitlist';
   const DATACENTER_LIST_URL = 'https://raw.githubusercontent.com/X4BNet/lists_vpn/main/output/datacenter/ipv4.txt';
+  const APPLE_PR_LIST_URL = 'https://mask-api.icloud.com/egress-ip-ranges.csv';
   const OPT_ENABLE_TOR = 'fv_country_blocker_enable_tor';
   const OPT_ENABLE_DATACENTER = 'fv_country_blocker_enable_datacenter';
+  const OPT_ALLOW_APPLE_PRIVATE_RELAY = 'fv_country_blocker_allow_apple_private_relay';
 
   private static $torIps = null;
   private static $datacenterCidrs = null;
+  private static $applePrCidrs = null;
 
   public static function is_tor_enabled() {
     return get_option(self::OPT_ENABLE_TOR, '1') === '1';
@@ -16,6 +19,10 @@ class FV_BotDetector {
 
   public static function is_datacenter_enabled() {
     return get_option(self::OPT_ENABLE_DATACENTER, '1') === '1';
+  }
+
+  public static function is_apple_private_relay_allowed() {
+    return get_option(self::OPT_ALLOW_APPLE_PRIVATE_RELAY, '1') === '1';
   }
 
   public static function isSuspicious($ip) {
@@ -67,6 +74,49 @@ class FV_BotDetector {
     if ($ipLong === false) return false;
     foreach (self::$datacenterCidrs as [$netLong, $mask]) {
       if (($ipLong & $mask) === $netLong) {
+        // Carve out Apple iCloud Private Relay if admin opted to allow it —
+        // Apple egresses on Akamai infrastructure that the X4BNet datacenter
+        // list (correctly) flags, but the traffic is real consumer iPhone/Mac
+        // users.
+        if (self::is_apple_private_relay_allowed() && self::isApplePrivateRelay($ip)) {
+          return false;
+        }
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public static function isApplePrivateRelay($ip) {
+    if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+      return false;
+    }
+    if (self::$applePrCidrs === null) {
+      self::$applePrCidrs = [];
+      $file = self::applePrFile();
+      if (is_readable($file)) {
+        foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+          $line = trim($line);
+          if ($line === '' || $line[0] === '#') continue;
+          // Apple's CSV: <cidr>,<country>,<region>,<city>,<lat>,<lng>
+          $cidr = explode(',', $line, 2)[0];
+          if (strpos($cidr, ':') !== false) continue; // ipv6, skip
+          if (strpos($cidr, '/') === false) {
+            $cidr .= '/32';
+          }
+          [$base, $bits] = explode('/', $cidr, 2);
+          $baseLong = ip2long($base);
+          $bits = (int) $bits;
+          if ($baseLong === false || $bits < 0 || $bits > 32) continue;
+          $mask = $bits === 0 ? 0 : (-1 << (32 - $bits)) & 0xFFFFFFFF;
+          self::$applePrCidrs[] = [$baseLong & $mask, $mask];
+        }
+      }
+    }
+    $ipLong = ip2long($ip);
+    if ($ipLong === false) return false;
+    foreach (self::$applePrCidrs as [$netLong, $mask]) {
+      if (($ipLong & $mask) === $netLong) {
         return true;
       }
     }
@@ -81,20 +131,29 @@ class FV_BotDetector {
     return self::downloadTo(self::DATACENTER_LIST_URL, self::datacenterFile(), 'datacenter');
   }
 
+  public static function refreshApplePrivateRelayList() {
+    return self::downloadTo(self::APPLE_PR_LIST_URL, self::applePrFile(), 'apple-pr');
+  }
+
   public static function registerCron() {
     add_action('fv_botdetector_refresh_tor', [__CLASS__, 'refreshTorList']);
     add_action('fv_botdetector_refresh_datacenter', [__CLASS__, 'refreshDatacenterList']);
+    add_action('fv_botdetector_refresh_apple_pr', [__CLASS__, 'refreshApplePrivateRelayList']);
     if (!wp_next_scheduled('fv_botdetector_refresh_tor')) {
       wp_schedule_event(time(), 'hourly', 'fv_botdetector_refresh_tor');
     }
     if (!wp_next_scheduled('fv_botdetector_refresh_datacenter')) {
       wp_schedule_event(time(), 'daily', 'fv_botdetector_refresh_datacenter');
     }
+    if (!wp_next_scheduled('fv_botdetector_refresh_apple_pr')) {
+      wp_schedule_event(time(), 'daily', 'fv_botdetector_refresh_apple_pr');
+    }
   }
 
   public static function unregisterCron() {
     wp_clear_scheduled_hook('fv_botdetector_refresh_tor');
     wp_clear_scheduled_hook('fv_botdetector_refresh_datacenter');
+    wp_clear_scheduled_hook('fv_botdetector_refresh_apple_pr');
   }
 
   private static function listsDir() {
@@ -112,6 +171,10 @@ class FV_BotDetector {
 
   private static function datacenterFile() {
     return self::listsDir() . '/datacenter-ipv4.txt';
+  }
+
+  private static function applePrFile() {
+    return self::listsDir() . '/apple-private-relay.csv';
   }
 
   private static function downloadTo($url, $path, $label) {
@@ -134,6 +197,7 @@ class FV_BotDetector {
     rename($tmp, $path);
     self::$torIps = null;
     self::$datacenterCidrs = null;
+    self::$applePrCidrs = null;
     return true;
   }
 }

@@ -3,7 +3,7 @@
  * Plugin Name: FV Country Blocker
  * Plugin URI: https://github.com/nimrod-cohen/fv-country-blocker
  * Description: Block visitors from specific countries using MaxMind GeoIP database.
- * Version: 1.5.7
+ * Version: 1.5.8
  * Author: nimrod-cohen
  * Author URI: https://github.com/nimrod-cohen/fv-country-blocker
  * License: GPL-2.0+
@@ -164,6 +164,7 @@ class FV_Country_Blocker {
     $country = FV_GeoIP::get_visitor_country($ip);
     $is_tor = class_exists('FV_BotDetector') && FV_BotDetector::isTor($ip);
     $is_datacenter = class_exists('FV_BotDetector') && FV_BotDetector::isDatacenter($ip);
+    $is_apple_pr = class_exists('FV_BotDetector') && FV_BotDetector::isApplePrivateRelay($ip);
     $blocked_countries = get_option('fv_country_blocker_blocked_countries', []);
     if (!is_array($blocked_countries)) {
       $blocked_countries = explode(',', $blocked_countries);
@@ -174,6 +175,7 @@ class FV_Country_Blocker {
       'country' => $country ?: null,
       'is_tor' => $is_tor,
       'is_datacenter' => $is_datacenter,
+      'is_apple_private_relay' => $is_apple_pr,
       'country_blocked' => $country_blocked,
       'would_block' => $country_blocked || $is_tor || $is_datacenter,
     ]);

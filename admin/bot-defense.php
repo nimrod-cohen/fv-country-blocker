@@ -14,6 +14,10 @@
         <td>
           <label><input type="checkbox" name="fv_country_blocker_enable_datacenter" value="1" <?php checked(get_option('fv_country_blocker_enable_datacenter', '1'), '1'); ?> /> Enabled</label>
           <p class="description">Maintains a daily-refreshed X4BNet datacenter/VPN CIDR list. Matching visitors get 403.</p>
+          <div style="margin-top:8px;padding-left:24px;border-left:2px solid #e0e0e0">
+            <label><input type="checkbox" name="fv_country_blocker_allow_apple_private_relay" value="1" <?php checked(get_option('fv_country_blocker_allow_apple_private_relay', '1'), '1'); ?> /> Allow Apple iCloud Private Relay</label>
+            <p class="description">Apple Private Relay routes iPhone/Mac users through Akamai infrastructure that overlaps the datacenter list. Enabling this exempts Apple's published egress range so real Apple users aren't blocked. Auto-refreshed daily from <code>mask-api.icloud.com</code>.</p>
+          </div>
         </td>
       </tr>
       <tr valign="top">

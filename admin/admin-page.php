@@ -49,6 +49,7 @@ function fv_country_blocker_admin_page() {
     update_option('fv_country_blocker_enable_tor', !empty($_POST['fv_country_blocker_enable_tor']) ? '1' : '0');
     update_option('fv_country_blocker_enable_datacenter', !empty($_POST['fv_country_blocker_enable_datacenter']) ? '1' : '0');
     update_option('fv_country_blocker_enable_captcha', !empty($_POST['fv_country_blocker_enable_captcha']) ? '1' : '0');
+    update_option('fv_country_blocker_allow_apple_private_relay', !empty($_POST['fv_country_blocker_allow_apple_private_relay']) ? '1' : '0');
 
     echo '<div class="updated"><p>Settings saved.</p></div>';
   }

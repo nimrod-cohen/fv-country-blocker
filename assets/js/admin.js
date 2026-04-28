@@ -134,7 +134,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const yn = b => (b ? '<span style="color:#a00;font-weight:bold">YES</span>' : 'no');
       rows.push(`<div style="margin:4px 0">Tor exit: ${yn(d.is_tor)}</div>`);
-      rows.push(`<div style="margin:4px 0">Datacenter / VPN: ${yn(d.is_datacenter)}</div>`);
+      const dcLabel = d.is_apple_private_relay
+        ? `${yn(d.is_datacenter)} <span style="color:#137333">(Apple iCloud Private Relay — exempted)</span>`
+        : yn(d.is_datacenter);
+      rows.push(`<div style="margin:4px 0">Datacenter / VPN: ${dcLabel}</div>`);
       rows.push(
         `<div style="margin:8px 0 0;padding:6px 10px;border-radius:4px;background:${d.would_block ? '#fbeaea' : '#eaf6ea'};color:${d.would_block ? '#a00' : '#137333'};font-weight:bold">` +
           (d.would_block ? 'This IP would be BLOCKED (403) site-wide.' : 'This IP would be allowed.') +
