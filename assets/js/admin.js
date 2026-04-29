@@ -355,18 +355,29 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // -----------------------------------------------------------------------------
-// Section toggles — country blocking + bot defense, each in its own tab.
-// AJAX-driven; updates the label live, then reloads so the admin-bar shield
-// color refreshes server-side.
+// Section toggles in the nav-tab bar — country blocking + bot defense.
+// Switches are wrapped in <label class="fvcb-tab-switch"> inside the parent
+// <a class="nav-tab">. We must stop the click from bubbling so Semantic UI's
+// tab handler doesn't switch tabs underneath us.
 // -----------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
   const toggles = document.querySelectorAll('.fvcb-section-checkbox');
   if (!toggles.length) return;
 
   toggles.forEach(input => {
-    const wrapper = input.closest('.fvcb-section-toggle');
-    const stateText = wrapper.querySelector('.fvcb-state-text');
-    if (!input.checked) wrapper.classList.add('is-off');
+    const switchEl = input.closest('.fvcb-tab-switch');
+
+    // Stop ANY click within the switch from reaching the parent <a> (which
+    // would otherwise trigger a tab change). Use capture phase so we beat
+    // jQuery's bound handler. preventDefault on the wrapper also keeps the
+    // browser from treating the embedded <input> as triggering navigation.
+    if (switchEl) {
+      ['click', 'mousedown'].forEach(evt => {
+        switchEl.addEventListener(evt, e => {
+          e.stopPropagation();
+        }, true);
+      });
+    }
 
     input.addEventListener('change', async () => {
       const turningOff = !input.checked;
@@ -378,7 +389,6 @@ document.addEventListener('DOMContentLoaded', () => {
           `Disable ${sectionLabel}?`
         );
         if (!ok) {
-          // Roll back the visual state.
           input.checked = true;
           return;
         }
@@ -402,7 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
           input.disabled = false;
           return;
         }
-        // Reload so the shield in the admin bar updates.
+        // Reload so the admin-bar shield color + tooltip refresh server-side.
         location.reload();
       } catch (e) {
         await fvcbDialog.alert('Toggle error: ' + e.message);

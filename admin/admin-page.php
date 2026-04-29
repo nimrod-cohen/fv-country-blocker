@@ -99,10 +99,26 @@ function fv_country_blocker_admin_page() {
             <?php endif; ?>
         </h1>
 
+        <?php
+          $country_on = get_option('fv_country_blocker_country_enabled', '1') === '1';
+          $bot_on     = get_option('fv_country_blocker_bot_defense_enabled', '1') === '1';
+        ?>
         <h2 class="nav-tab-wrapper">
             <a href="#settings" class="nav-tab nav-tab-active">Settings</a>
-            <a href="#countries" class="nav-tab">Blocked Countries</a>
-            <a href="#bot-defense" class="nav-tab">Bot Defense</a>
+            <a href="#countries" class="nav-tab">
+              <label class="fvcb-tab-switch" title="Country blocking is <?php echo $country_on ? 'ON' : 'OFF'; ?> — click to toggle">
+                <input type="checkbox" class="fvcb-section-checkbox" data-section="country" <?php checked($country_on); ?>>
+                <span class="fvcb-slider"></span>
+              </label>
+              Blocked Countries
+            </a>
+            <a href="#bot-defense" class="nav-tab">
+              <label class="fvcb-tab-switch" title="Bot defense is <?php echo $bot_on ? 'ON' : 'OFF'; ?> — click to toggle">
+                <input type="checkbox" class="fvcb-section-checkbox" data-section="bot" <?php checked($bot_on); ?>>
+                <span class="fvcb-slider"></span>
+              </label>
+              Bot Defense
+            </a>
             <a href="#bypass-tokens" class="nav-tab">Bypass Tokens</a>
             <a href="#test-ip" class="nav-tab">Test IP</a>
         </h2>
