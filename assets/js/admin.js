@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const tokenCell = revoked
         ? `<code style="color:#999;text-decoration:line-through">${esc(t.token)}</code>`
         : `<code class="fvcb-token-value" style="user-select:all">${esc(t.token)}</code>
-           <button type="button" class="button button-small fvcb-copy" data-token="${esc(t.token)}">Copy</button>`;
+           <button type="button" class="button button-small fvcb-copy" data-url="${esc(sampleUrl(t.token))}">Copy link</button>`;
       const status = revoked
         ? '<span style="color:#a00;font-weight:bold">revoked</span>'
         : '<span style="color:#137333;font-weight:bold">active</span>';
@@ -240,9 +240,9 @@ document.addEventListener('DOMContentLoaded', () => {
       refresh();
     } else if (copyBtn) {
       try {
-        await navigator.clipboard.writeText(copyBtn.dataset.token);
+        await navigator.clipboard.writeText(copyBtn.dataset.url);
         copyBtn.textContent = 'Copied';
-        setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+        setTimeout(() => { copyBtn.textContent = 'Copy link'; }, 1500);
       } catch (_) {}
     }
   });
