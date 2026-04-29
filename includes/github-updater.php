@@ -224,6 +224,8 @@ class GitHubPluginUpdater {
     require_once ABSPATH . 'wp-admin/includes/plugin.php';
     require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
 
+    $was_active = is_plugin_active($this->plugin_file);
+
     $transient = get_site_transient('update_plugins');
     if (!is_object($transient)) $transient = new \stdClass();
     if (!isset($transient->response) || !is_array($transient->response)) {
@@ -248,14 +250,37 @@ class GitHubPluginUpdater {
 
     delete_transient($this->latest_release_cache_key);
 
+    // Plugin_Upgrader silently deactivates the plugin while swapping files
+    // and re-activates on success. If reactivation failed (or got
+    // interrupted) the user lands on "Sorry, you are not allowed to access
+    // this page" because the menu hooks never ran on the next request.
+    // Force reactivation here when we owned that state going in.
+    $reactivated = null;
+    if ($was_active && !is_plugin_active($this->plugin_file)) {
+      $err = activate_plugin($this->plugin_file, '', false, true);
+      $reactivated = is_wp_error($err) ? $err->get_error_message() : true;
+    }
+
     if (is_wp_error($result)) {
-      return ['updated' => false, 'error' => $result->get_error_message()];
+      return ['updated' => false, 'error' => $result->get_error_message(), 'reactivated' => $reactivated];
     }
     if (!$result) {
       $errors = $skin->get_errors();
-      return ['updated' => false, 'error' => is_wp_error($errors) ? $errors->get_error_message() : 'upgrade returned false'];
+      return ['updated' => false, 'error' => is_wp_error($errors) ? $errors->get_error_message() : 'upgrade returned false', 'reactivated' => $reactivated];
     }
-    return ['updated' => true, 'version' => $info['latest']];
+
+    // Bust opcache for the plugin so the next request picks up new code,
+    // not stale opcache entries that reference removed methods.
+    if (function_exists('opcache_reset')) {
+      @opcache_reset();
+    }
+
+    return [
+      'updated' => true,
+      'version' => $info['latest'],
+      'still_active' => is_plugin_active($this->plugin_file),
+      'reactivated' => $reactivated,
+    ];
   }
 
   public function update($transient) {

@@ -312,7 +312,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       btn.textContent = 'Updated, reloading…';
-      setTimeout(() => location.reload(), 600);
+      // 1.5s delay gives PHP-FPM workers time to recompile the new files
+      // (we triggered opcache_reset server-side). location.assign goes to
+      // a clean settings URL so we don't reload mid-redirect-chain.
+      setTimeout(() => location.assign(location.pathname + location.search), 1500);
     } catch (e) {
       alert('Update error: ' + e.message);
       btn.disabled = false;
