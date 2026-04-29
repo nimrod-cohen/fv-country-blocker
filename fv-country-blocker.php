@@ -3,7 +3,7 @@
  * Plugin Name: FV Country Blocker
  * Plugin URI: https://github.com/nimrod-cohen/fv-country-blocker
  * Description: Block visitors from specific countries using MaxMind GeoIP database.
- * Version: 1.5.17
+ * Version: 1.5.18
  * Author: nimrod-cohen
  * Author URI: https://github.com/nimrod-cohen/fv-country-blocker
  * License: GPL-2.0+
@@ -478,6 +478,20 @@ class FV_Country_Blocker {
     // on first hit so subsequent visits skip the whole block path.
     if (self::check_bypass_token()) {
       return;
+    }
+
+    // Any logged-in WP user is exempt — checked via the auth cookie name
+    // rather than current_user_can(), because on REST requests with a stale
+    // X-WP-Nonce, WP can downgrade the request to "logged out" for the
+    // REST context even though the auth cookie is valid. That made our
+    // blocker intercept /wp-json/wp/v2/users/me etc. for real admins,
+    // returning HTML which broke the admin UI's JSON parsing.
+    if (!$force) {
+      foreach ($_COOKIE as $cookie_name => $_) {
+        if (strncmp($cookie_name, 'wordpress_logged_in_', 20) === 0) {
+          return;
+        }
+      }
     }
 
     if (!$force && (
