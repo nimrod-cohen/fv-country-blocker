@@ -24,6 +24,7 @@ class GitHubPluginUpdater {
   private $plugin_file = null;
   private $plugin_data = null;
   private static $http_filter_registered = false;
+  private static $hooks_registered = [];
 
   private function get_plugin_data() {
     if ($this->plugin_data) {
@@ -39,14 +40,23 @@ class GitHubPluginUpdater {
     $this->cache_allowed = true;
     $this->get_plugin_data();
 
-    add_filter('plugins_api', [$this, 'get_plugin_info'], 20, 3);
-    add_filter('site_transient_update_plugins', [$this, 'update']);
-    add_action('upgrader_process_complete', [$this, 'finish_install'], 10, 2);
-    add_filter('upgrader_source_selection', [$this, 'fix_source_dir'], 10, 4);
+    // Register hooks at most once per plugin_file across all instances —
+    // the class is instantiated multiple times per request now (admin_init,
+    // get_pending_update, perform_self_update, etc.), and re-adding the
+    // same filter each time multiplies the "Clear Cache" link / triggers
+    // duplicate filter callbacks.
+    if (empty(self::$hooks_registered[$this->plugin_file])) {
+      add_filter('plugins_api', [$this, 'get_plugin_info'], 20, 3);
+      add_filter('site_transient_update_plugins', [$this, 'update']);
+      add_action('upgrader_process_complete', [$this, 'finish_install'], 10, 2);
+      add_filter('upgrader_source_selection', [$this, 'fix_source_dir'], 10, 4);
 
-    add_action('admin_post_' . $this->plugin_slug . '_clear_cache', [$this, 'clear_latest_release_cache']);
-    add_action('admin_notices', [$this, 'display_cache_cleared_message']);
-    add_filter('plugin_action_links_' . $this->plugin_file, [$this, 'add_clear_cache_link']);
+      add_action('admin_post_' . $this->plugin_slug . '_clear_cache', [$this, 'clear_latest_release_cache']);
+      add_action('admin_notices', [$this, 'display_cache_cleared_message']);
+      add_filter('plugin_action_links_' . $this->plugin_file, [$this, 'add_clear_cache_link']);
+
+      self::$hooks_registered[$this->plugin_file] = true;
+    }
 
     if (!self::$http_filter_registered && self::get_token()) {
       add_filter('http_request_args', [__CLASS__, 'inject_github_auth'], 10, 2);
