@@ -4,15 +4,15 @@
       <tr valign="top">
           <th scope="row">MaxMind License Key</th>
           <td>
-            <input type="text" name="fv_country_blocker_license_key" class="maxmind-input" value="<?php echo esc_attr(get_option('fv_country_blocker_license_key')); ?>" />
-            <p class="description">This is only required if the custom path setting is empty, and you need to download the mmdb file regularly for this WP install independently</p>
+            <input type="text" name="fv_country_blocker_license_key" class="maxmind-input fvcb-mmdb-license" value="<?php echo esc_attr(get_option('fv_country_blocker_license_key')); ?>" />
+            <p class="description">Required if you need this WP install to download the mmdb file independently. <strong>Mutually exclusive with Custom MMDB Path</strong> — set one or the other.</p>
           </td>
       </tr>
       <tr valign="top">
           <th scope="row">Custom MMDB File Path</th>
           <td>
-              <input type="text" name="fv_country_blocker_custom_mmdb_path" value="<?php echo esc_attr($custom_mmdb_path); ?>" class="maxmind-input" />
-              <p class="description">Leave empty to use the current WP installation path. if you have multiple WP installs, and want to use the same MMDB for all of them, you can use the custom path, it is then your responsibility to make sure that the file is downloaded regularly.</p>
+              <input type="text" name="fv_country_blocker_custom_mmdb_path" value="<?php echo esc_attr($custom_mmdb_path); ?>" class="maxmind-input fvcb-mmdb-path" />
+              <p class="description">Use a shared MMDB file path (e.g. across multiple WP installs). When set, you're responsible for keeping that file fresh. <strong>Mutually exclusive with MaxMind License Key</strong>.</p>
           </td>
       </tr>
       <tr valign="top">

@@ -331,6 +331,30 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // -----------------------------------------------------------------------------
+// MaxMind license key <-> custom MMDB path are mutually exclusive: when one
+// has a value, the other is disabled + visually muted. Sync on load + on input.
+// -----------------------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+  const license = document.querySelector('.fvcb-mmdb-license');
+  const path = document.querySelector('.fvcb-mmdb-path');
+  if (!license || !path) return;
+
+  const sync = () => {
+    const licenseHas = license.value.trim().length > 0;
+    const pathHas = path.value.trim().length > 0;
+    path.disabled = licenseHas;
+    license.disabled = pathHas;
+    path.style.opacity = licenseHas ? '0.5' : '';
+    license.style.opacity = pathHas ? '0.5' : '';
+    path.title = licenseHas ? 'Disabled — clear the License Key to use this' : '';
+    license.title = pathHas ? 'Disabled — clear the Custom Path to use this' : '';
+  };
+  license.addEventListener('input', sync);
+  path.addEventListener('input', sync);
+  sync();
+});
+
+// -----------------------------------------------------------------------------
 // Toggle enabled (header)
 // -----------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
