@@ -86,23 +86,10 @@ function fv_country_blocker_admin_page() {
 
   ?>
     <div class="wrap">
-        <?php
-          $pending_update = FV_Country_Blocker::get_pending_update();
-          $is_enabled = get_option('fv_country_blocker_enabled', '1') === '1';
-        ?>
+        <?php $pending_update = FV_Country_Blocker::get_pending_update(); ?>
         <h1>
             <?php echo esc_html(get_admin_page_title()); ?>
             <span class="fv-country-blocker-version">v<?php echo esc_html($plugin_version); ?></span>
-
-            <button type="button" class="button fvcb-toggle-enabled"
-              style="margin-left:10px; vertical-align:middle;
-                <?php echo $is_enabled
-                  ? 'background:#46b450; border-color:#36843a; color:#fff;'
-                  : 'background:#dc3232; border-color:#a02525; color:#fff;'; ?>"
-              data-enabled="<?php echo $is_enabled ? '1' : '0'; ?>">
-              <?php echo $is_enabled ? 'Blocking ON — click to disable' : 'Blocking OFF — click to enable'; ?>
-            </button>
-
             <?php if ($pending_update): ?>
               <button type="button" class="button button-primary fvcb-self-update"
                 style="margin-left:10px; vertical-align:middle; background:#f0a000; border-color:#c08400;"

@@ -355,42 +355,61 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // -----------------------------------------------------------------------------
-// Toggle enabled (header)
+// Section toggles — country blocking + bot defense, each in its own tab.
+// AJAX-driven; updates the label live, then reloads so the admin-bar shield
+// color refreshes server-side.
 // -----------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.querySelector('button.fvcb-toggle-enabled');
-  if (!btn) return;
-  btn.addEventListener('click', async () => {
-    const wasEnabled = btn.dataset.enabled === '1';
-    if (wasEnabled) {
-      const ok = await fvcbDialog.confirm(
-        'All country, datacenter and Tor blocking will stop site-wide.',
-        'Disable blocking?'
-      );
-      if (!ok) return;
-    }
-    btn.disabled = true;
-    try {
-      const r = await fetch(fvCountryBlocker.ajax_url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          action: 'fv_country_blocker_toggle_enabled',
-          nonce: fvCountryBlocker.nonce
-        })
-      });
-      const data = await r.json();
-      if (!data.success) {
-        await fvcbDialog.alert('Toggle failed: ' + (data.data || ''));
-        btn.disabled = false;
-        return;
+  const toggles = document.querySelectorAll('.fvcb-section-checkbox');
+  if (!toggles.length) return;
+
+  toggles.forEach(input => {
+    const wrapper = input.closest('.fvcb-section-toggle');
+    const stateText = wrapper.querySelector('.fvcb-state-text');
+    if (!input.checked) wrapper.classList.add('is-off');
+
+    input.addEventListener('change', async () => {
+      const turningOff = !input.checked;
+      const sectionLabel = input.dataset.section === 'country' ? 'country blocking' : 'bot defense';
+
+      if (turningOff) {
+        const ok = await fvcbDialog.confirm(
+          `${sectionLabel} will stop running site-wide.`,
+          `Disable ${sectionLabel}?`
+        );
+        if (!ok) {
+          // Roll back the visual state.
+          input.checked = true;
+          return;
+        }
       }
-      // Reload so the admin-bar shield color refreshes server-side.
-      location.reload();
-    } catch (e) {
-      await fvcbDialog.alert('Toggle error: ' + e.message);
-      btn.disabled = false;
-    }
+
+      input.disabled = true;
+      try {
+        const r = await fetch(fvCountryBlocker.ajax_url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            action: 'fv_country_blocker_toggle_section',
+            nonce: fvCountryBlocker.nonce,
+            section: input.dataset.section
+          })
+        });
+        const data = await r.json();
+        if (!data.success) {
+          await fvcbDialog.alert('Toggle failed: ' + (data.data || ''));
+          input.checked = !input.checked;
+          input.disabled = false;
+          return;
+        }
+        // Reload so the shield in the admin bar updates.
+        location.reload();
+      } catch (e) {
+        await fvcbDialog.alert('Toggle error: ' + e.message);
+        input.checked = !input.checked;
+        input.disabled = false;
+      }
+    });
   });
 });
 

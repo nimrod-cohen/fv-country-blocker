@@ -3,7 +3,7 @@
  * Plugin Name: FV Country Blocker
  * Plugin URI: https://github.com/nimrod-cohen/fv-country-blocker
  * Description: Block visitors from specific countries using MaxMind GeoIP database.
- * Version: 1.5.16
+ * Version: 1.5.17
  * Author: nimrod-cohen
  * Author URI: https://github.com/nimrod-cohen/fv-country-blocker
  * License: GPL-2.0+
@@ -47,18 +47,22 @@ class FV_Country_Blocker {
   public function add_admin_bar_link($wp_admin_bar) {
     if (!current_user_can('manage_options')) return;
     $update = self::get_pending_update();
-    $enabled = get_option('fv_country_blocker_enabled', '1') === '1';
+    $country_on = get_option('fv_country_blocker_country_enabled', '1') === '1';
+    $bot_on     = get_option('fv_country_blocker_bot_defense_enabled', '1') === '1';
 
-    // Status precedence: update > disabled > enabled.
+    // Status precedence: update > both-off > active.
     if ($update) {
       $cls = 'fvcb-has-update';
       $title = 'FV Country Blocker — update to v' . $update['latest'] . ' available';
-    } elseif (!$enabled) {
+    } elseif (!$country_on && !$bot_on) {
       $cls = 'fvcb-disabled';
-      $title = 'FV Country Blocker — blocking is OFF';
+      $title = 'FV Country Blocker — country blocking and bot defense both OFF';
     } else {
       $cls = 'fvcb-enabled';
-      $title = 'FV Country Blocker — blocking is on';
+      $bits = [];
+      if ($country_on) $bits[] = 'country';
+      if ($bot_on)     $bits[] = 'bot defense';
+      $title = 'FV Country Blocker — active: ' . implode(' + ', $bits);
     }
 
     $label = 'Country Blocker';
@@ -180,7 +184,7 @@ class FV_Country_Blocker {
     add_action('wp_ajax_fv_country_blocker_token_revoke', [$this, 'ajax_token_revoke']);
     add_action('wp_ajax_fv_country_blocker_token_list',   [$this, 'ajax_token_list']);
     add_action('wp_ajax_fv_country_blocker_self_update',    [$this, 'ajax_self_update']);
-    add_action('wp_ajax_fv_country_blocker_toggle_enabled', [$this, 'ajax_toggle_enabled']);
+    add_action('wp_ajax_fv_country_blocker_toggle_section', [$this, 'ajax_toggle_section']);
     add_action('admin_init', [__CLASS__, 'ensure_tokens_table']);
   }
 
@@ -223,12 +227,26 @@ class FV_Country_Blocker {
     wp_send_json_success(['id' => $wpdb->insert_id, 'token' => $token, 'name' => $name]);
   }
 
-  public function ajax_toggle_enabled() {
+  public function ajax_toggle_section() {
     $this->token_guard();
-    $current = get_option('fv_country_blocker_enabled', '1') === '1';
+    $section = $_REQUEST['section'] ?? '';
+    $allowed = [
+      'country' => 'fv_country_blocker_country_enabled',
+      'bot'     => 'fv_country_blocker_bot_defense_enabled',
+    ];
+    if (!isset($allowed[$section])) {
+      wp_send_json_error('unknown section');
+    }
+    $opt = $allowed[$section];
+    $current = get_option($opt, '1') === '1';
     $next = $current ? '0' : '1';
-    update_option('fv_country_blocker_enabled', $next);
-    wp_send_json_success(['enabled' => $next === '1']);
+    update_option($opt, $next);
+    wp_send_json_success([
+      'section' => $section,
+      'enabled' => $next === '1',
+      'country_enabled' => get_option('fv_country_blocker_country_enabled', '1') === '1',
+      'bot_enabled' => get_option('fv_country_blocker_bot_defense_enabled', '1') === '1',
+    ]);
   }
 
   public function ajax_self_update() {
@@ -443,8 +461,11 @@ class FV_Country_Blocker {
   }
 
   public function check_visitor_country() {
-    // Master kill switch — blocking can be toggled off from settings.
-    if (get_option('fv_country_blocker_enabled', '1') !== '1') {
+    $country_on = get_option('fv_country_blocker_country_enabled', '1') === '1';
+    $bot_on = get_option('fv_country_blocker_bot_defense_enabled', '1') === '1';
+
+    // Both sections off — nothing to do.
+    if (!$country_on && !$bot_on) {
       return;
     }
 
@@ -472,8 +493,9 @@ class FV_Country_Blocker {
       $ip = $force;
     }
 
-    // Tor / datacenter block — each toggle gates its own list via FV_BotDetector.
-    if (class_exists('FV_BotDetector')) {
+    // Tor / datacenter block — gated by the Bot Defense master toggle and
+    // each individual sub-toggle (which lives inside FV_BotDetector).
+    if ($bot_on && class_exists('FV_BotDetector')) {
       if (FV_BotDetector::isTor($ip)) {
         self::send_block_response('tor', $ip);
       }
@@ -481,6 +503,8 @@ class FV_Country_Blocker {
         self::send_block_response('datacenter', $ip);
       }
     }
+
+    if (!$country_on) return;
 
     $visitor_country = FV_GeoIP::get_visitor_country($ip);
     if (!$visitor_country) {

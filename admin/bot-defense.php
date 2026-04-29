@@ -1,4 +1,12 @@
 <div id="bot-defense" class="tab-content" style="display:none;">
+    <?php $bot_on = get_option('fv_country_blocker_bot_defense_enabled', '1') === '1'; ?>
+    <div class="fvcb-section-toggle" style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <label class="fvcb-switch">
+        <input type="checkbox" class="fvcb-section-checkbox" data-section="bot" <?php checked($bot_on); ?>>
+        <span class="fvcb-slider"></span>
+      </label>
+      <span class="fvcb-section-label" style="font-weight:600;">Bot defense is <span class="fvcb-state-text"><?php echo $bot_on ? 'ON' : 'OFF'; ?></span></span>
+    </div>
     <h2>Bot Defense</h2>
     <p class="description">Enabled checks site-block matching visitors with the same 403 + custom HTML used for blocked countries.</p>
     <table class="form-table">
