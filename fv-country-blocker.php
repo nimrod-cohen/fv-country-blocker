@@ -3,7 +3,7 @@
  * Plugin Name: FV Country Blocker
  * Plugin URI: https://github.com/nimrod-cohen/fv-country-blocker
  * Description: Block visitors from specific countries using MaxMind GeoIP database.
- * Version: 1.5.10
+ * Version: 1.5.11
  * Author: nimrod-cohen
  * Author URI: https://github.com/nimrod-cohen/fv-country-blocker
  * License: GPL-2.0+
@@ -46,11 +46,18 @@ class FV_Country_Blocker {
 
   public function add_admin_bar_link($wp_admin_bar) {
     if (!current_user_can('manage_options')) return;
+    $update = self::get_pending_update();
+    $label = $update
+      ? 'Country Blocker <span class="fvcb-update-dot" title="Update available: v' . esc_attr($update['latest']) . '"></span>'
+      : 'Country Blocker';
     $wp_admin_bar->add_node([
       'id' => 'fv-country-blocker-settings',
-      'title' => '<span class="ab-icon dashicons dashicons-shield"></span><span class="ab-label">Country Blocker</span>',
+      'title' => '<span class="ab-icon dashicons dashicons-shield"></span><span class="ab-label">' . $label . '</span>',
       'href' => admin_url('options-general.php?page=fv-country-blocker'),
-      'meta' => ['title' => 'FV Country Blocker settings']
+      'meta' => [
+        'title' => $update ? 'FV Country Blocker — update available' : 'FV Country Blocker settings',
+        'class' => $update ? 'fvcb-has-update' : ''
+      ]
     ]);
   }
 
@@ -61,6 +68,13 @@ class FV_Country_Blocker {
         font-family: dashicons !important;
         content: "\f332";
         top: 3px;
+      }
+      #wpadminbar #wp-admin-bar-fv-country-blocker-settings.fvcb-has-update .ab-icon:before {
+        color: #f0a000 !important;
+      }
+      #wpadminbar #wp-admin-bar-fv-country-blocker-settings .fvcb-update-dot {
+        display:inline-block; width:8px; height:8px; border-radius:50%;
+        background:#f0a000; margin-left:6px; vertical-align:middle;
       }
     </style>';
   }
@@ -152,6 +166,7 @@ class FV_Country_Blocker {
     add_action('wp_ajax_fv_country_blocker_token_create', [$this, 'ajax_token_create']);
     add_action('wp_ajax_fv_country_blocker_token_revoke', [$this, 'ajax_token_revoke']);
     add_action('wp_ajax_fv_country_blocker_token_list',   [$this, 'ajax_token_list']);
+    add_action('wp_ajax_fv_country_blocker_self_update',  [$this, 'ajax_self_update']);
     add_action('admin_init', [__CLASS__, 'ensure_tokens_table']);
   }
 
@@ -192,6 +207,36 @@ class FV_Country_Blocker {
     ]);
     if (!$ok) wp_send_json_error('insert failed: ' . $wpdb->last_error);
     wp_send_json_success(['id' => $wpdb->insert_id, 'token' => $token, 'name' => $name]);
+  }
+
+  public function ajax_self_update() {
+    $this->token_guard();
+    $updater = new \FVCountryBlocker\GitHubPluginUpdater(__FILE__);
+    $result = $updater->perform_self_update();
+    if (empty($result['updated'])) {
+      wp_send_json_error($result);
+    }
+    wp_send_json_success($result);
+  }
+
+  /**
+   * Cached check (per request) for "is there a newer release?". Called by
+   * the admin-bar icon and the settings page header. Returns null/array.
+   */
+  public static function get_pending_update() {
+    static $cached = null;
+    if ($cached !== null) return $cached === false ? null : $cached;
+    if (!class_exists('FVCountryBlocker\\GitHubPluginUpdater')) {
+      $cached = false; return null;
+    }
+    try {
+      $updater = new \FVCountryBlocker\GitHubPluginUpdater(__FILE__);
+      $info = $updater->is_update_available();
+      $cached = $info ?: false;
+      return $info;
+    } catch (\Throwable $e) {
+      $cached = false; return null;
+    }
   }
 
   public function ajax_token_revoke() {

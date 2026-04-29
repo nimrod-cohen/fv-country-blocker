@@ -184,6 +184,70 @@ class GitHubPluginUpdater {
     return true;
   }
 
+  /**
+   * Returns null if up to date, or an info array if a newer release exists.
+   */
+  public function is_update_available() {
+    if (!$this->get_latest_release() || !$this->latest_release) return null;
+    $current = $this->plugin_data['Version'];
+    $latest = $this->latest_release['version'];
+    if (!version_compare($current, $latest, '<')) return null;
+    return [
+      'current' => $current,
+      'latest' => $latest,
+      'tag' => $this->latest_release['tag_name'],
+      'url' => $this->get_download_url($this->latest_release['tag_name']),
+      'notes' => $this->latest_release['body'] ?? '',
+    ];
+  }
+
+  /**
+   * One-shot self-update — populates the update_plugins transient so
+   * Plugin_Upgrader::upgrade() finds the new version, then runs it.
+   */
+  public function perform_self_update() {
+    $info = $this->is_update_available();
+    if (!$info) return ['updated' => false, 'error' => 'no update available'];
+
+    require_once ABSPATH . 'wp-admin/includes/file.php';
+    require_once ABSPATH . 'wp-admin/includes/misc.php';
+    require_once ABSPATH . 'wp-admin/includes/plugin.php';
+    require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+
+    $transient = get_site_transient('update_plugins');
+    if (!is_object($transient)) $transient = new \stdClass();
+    if (!isset($transient->response) || !is_array($transient->response)) {
+      $transient->response = [];
+    }
+    if (!isset($transient->checked) || !is_array($transient->checked)) {
+      $transient->checked = [];
+    }
+    $transient->checked[$this->plugin_file] = $this->plugin_data['Version'];
+
+    $res = new \stdClass();
+    $res->slug = $this->plugin_slug;
+    $res->plugin = $this->plugin_file;
+    $res->new_version = $info['latest'];
+    $res->package = $info['url'];
+    $transient->response[$this->plugin_file] = $res;
+    set_site_transient('update_plugins', $transient);
+
+    $skin = new \WP_Ajax_Upgrader_Skin();
+    $upgrader = new \Plugin_Upgrader($skin);
+    $result = $upgrader->upgrade($this->plugin_file);
+
+    delete_transient($this->latest_release_cache_key);
+
+    if (is_wp_error($result)) {
+      return ['updated' => false, 'error' => $result->get_error_message()];
+    }
+    if (!$result) {
+      $errors = $skin->get_errors();
+      return ['updated' => false, 'error' => is_wp_error($errors) ? $errors->get_error_message() : 'upgrade returned false'];
+    }
+    return ['updated' => true, 'version' => $info['latest']];
+  }
+
   public function update($transient) {
     if (empty($transient->checked)) {
       return $transient;

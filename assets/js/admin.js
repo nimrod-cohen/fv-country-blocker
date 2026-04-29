@@ -249,3 +249,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
   refresh();
 });
+
+// -----------------------------------------------------------------------------
+// Self-update button (header)
+// -----------------------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.querySelector('button.fvcb-self-update');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    if (!confirm(`Update plugin to v${btn.dataset.target}?`)) return;
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Updating…';
+    try {
+      const r = await fetch(fvCountryBlocker.ajax_url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          action: 'fv_country_blocker_self_update',
+          nonce: fvCountryBlocker.nonce
+        })
+      });
+      const data = await r.json();
+      if (!data.success) {
+        alert('Update failed: ' + (data.data?.error || JSON.stringify(data.data)));
+        btn.disabled = false;
+        btn.textContent = originalText;
+        return;
+      }
+      btn.textContent = 'Updated, reloading…';
+      setTimeout(() => location.reload(), 600);
+    } catch (e) {
+      alert('Update error: ' + e.message);
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  });
+});

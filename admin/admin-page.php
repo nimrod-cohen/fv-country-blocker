@@ -86,9 +86,17 @@ function fv_country_blocker_admin_page() {
 
   ?>
     <div class="wrap">
+        <?php $pending_update = FV_Country_Blocker::get_pending_update(); ?>
         <h1>
             <?php echo esc_html(get_admin_page_title()); ?>
             <span class="fv-country-blocker-version">v<?php echo esc_html($plugin_version); ?></span>
+            <?php if ($pending_update): ?>
+              <button type="button" class="button button-primary fvcb-self-update"
+                style="margin-left:10px; vertical-align:middle; background:#f0a000; border-color:#c08400;"
+                data-target="<?php echo esc_attr($pending_update['latest']); ?>">
+                Update to v<?php echo esc_html($pending_update['latest']); ?>
+              </button>
+            <?php endif; ?>
         </h1>
 
         <h2 class="nav-tab-wrapper">
