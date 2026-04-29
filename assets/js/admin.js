@@ -251,6 +251,40 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // -----------------------------------------------------------------------------
+// Toggle enabled (header)
+// -----------------------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.querySelector('button.fvcb-toggle-enabled');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    const wasEnabled = btn.dataset.enabled === '1';
+    if (wasEnabled && !confirm('Disable country/datacenter/Tor blocking site-wide?')) return;
+    btn.disabled = true;
+    try {
+      const r = await fetch(fvCountryBlocker.ajax_url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          action: 'fv_country_blocker_toggle_enabled',
+          nonce: fvCountryBlocker.nonce
+        })
+      });
+      const data = await r.json();
+      if (!data.success) {
+        alert('Toggle failed: ' + (data.data || ''));
+        btn.disabled = false;
+        return;
+      }
+      // Reload so the admin-bar shield color refreshes server-side.
+      location.reload();
+    } catch (e) {
+      alert('Toggle error: ' + e.message);
+      btn.disabled = false;
+    }
+  });
+});
+
+// -----------------------------------------------------------------------------
 // Self-update button (header)
 // -----------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {

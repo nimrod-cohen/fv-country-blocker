@@ -3,7 +3,7 @@
  * Plugin Name: FV Country Blocker
  * Plugin URI: https://github.com/nimrod-cohen/fv-country-blocker
  * Description: Block visitors from specific countries using MaxMind GeoIP database.
- * Version: 1.5.11
+ * Version: 1.5.12
  * Author: nimrod-cohen
  * Author URI: https://github.com/nimrod-cohen/fv-country-blocker
  * License: GPL-2.0+
@@ -47,17 +47,30 @@ class FV_Country_Blocker {
   public function add_admin_bar_link($wp_admin_bar) {
     if (!current_user_can('manage_options')) return;
     $update = self::get_pending_update();
-    $label = $update
-      ? 'Country Blocker <span class="fvcb-update-dot" title="Update available: v' . esc_attr($update['latest']) . '"></span>'
-      : 'Country Blocker';
+    $enabled = get_option('fv_country_blocker_enabled', '1') === '1';
+
+    // Status precedence: update > disabled > enabled.
+    if ($update) {
+      $cls = 'fvcb-has-update';
+      $title = 'FV Country Blocker — update to v' . $update['latest'] . ' available';
+    } elseif (!$enabled) {
+      $cls = 'fvcb-disabled';
+      $title = 'FV Country Blocker — blocking is OFF';
+    } else {
+      $cls = 'fvcb-enabled';
+      $title = 'FV Country Blocker — blocking is on';
+    }
+
+    $label = 'Country Blocker';
+    if ($update) {
+      $label .= ' <span class="fvcb-update-dot" title="Update available: v' . esc_attr($update['latest']) . '"></span>';
+    }
+
     $wp_admin_bar->add_node([
       'id' => 'fv-country-blocker-settings',
       'title' => '<span class="ab-icon dashicons dashicons-shield"></span><span class="ab-label">' . $label . '</span>',
       'href' => admin_url('options-general.php?page=fv-country-blocker'),
-      'meta' => [
-        'title' => $update ? 'FV Country Blocker — update available' : 'FV Country Blocker settings',
-        'class' => $update ? 'fvcb-has-update' : ''
-      ]
+      'meta' => ['title' => $title, 'class' => $cls]
     ]);
   }
 
@@ -69,9 +82,9 @@ class FV_Country_Blocker {
         content: "\f332";
         top: 3px;
       }
-      #wpadminbar #wp-admin-bar-fv-country-blocker-settings.fvcb-has-update .ab-icon:before {
-        color: #f0a000 !important;
-      }
+      #wpadminbar #wp-admin-bar-fv-country-blocker-settings.fvcb-enabled  .ab-icon:before { color:#46b450 !important; }
+      #wpadminbar #wp-admin-bar-fv-country-blocker-settings.fvcb-disabled .ab-icon:before { color:#dc3232 !important; }
+      #wpadminbar #wp-admin-bar-fv-country-blocker-settings.fvcb-has-update .ab-icon:before { color:#f0a000 !important; }
       #wpadminbar #wp-admin-bar-fv-country-blocker-settings .fvcb-update-dot {
         display:inline-block; width:8px; height:8px; border-radius:50%;
         background:#f0a000; margin-left:6px; vertical-align:middle;
@@ -166,7 +179,8 @@ class FV_Country_Blocker {
     add_action('wp_ajax_fv_country_blocker_token_create', [$this, 'ajax_token_create']);
     add_action('wp_ajax_fv_country_blocker_token_revoke', [$this, 'ajax_token_revoke']);
     add_action('wp_ajax_fv_country_blocker_token_list',   [$this, 'ajax_token_list']);
-    add_action('wp_ajax_fv_country_blocker_self_update',  [$this, 'ajax_self_update']);
+    add_action('wp_ajax_fv_country_blocker_self_update',    [$this, 'ajax_self_update']);
+    add_action('wp_ajax_fv_country_blocker_toggle_enabled', [$this, 'ajax_toggle_enabled']);
     add_action('admin_init', [__CLASS__, 'ensure_tokens_table']);
   }
 
@@ -207,6 +221,14 @@ class FV_Country_Blocker {
     ]);
     if (!$ok) wp_send_json_error('insert failed: ' . $wpdb->last_error);
     wp_send_json_success(['id' => $wpdb->insert_id, 'token' => $token, 'name' => $name]);
+  }
+
+  public function ajax_toggle_enabled() {
+    $this->token_guard();
+    $current = get_option('fv_country_blocker_enabled', '1') === '1';
+    $next = $current ? '0' : '1';
+    update_option('fv_country_blocker_enabled', $next);
+    wp_send_json_success(['enabled' => $next === '1']);
   }
 
   public function ajax_self_update() {
@@ -421,6 +443,11 @@ class FV_Country_Blocker {
   }
 
   public function check_visitor_country() {
+    // Master kill switch — blocking can be toggled off from settings.
+    if (get_option('fv_country_blocker_enabled', '1') !== '1') {
+      return;
+    }
+
     $force = $_GET["force_country_ip"] ?? false;
 
     // Get the user's IP address
