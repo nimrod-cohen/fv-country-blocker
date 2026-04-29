@@ -1,3 +1,75 @@
+// -----------------------------------------------------------------------------
+// Modal dialog — replaces native confirm/alert (which are ugly + browser-styled).
+// Promise-based: const ok = await fvcbDialog.confirm('Sure?'); fvcbDialog.alert('Done');
+// Supports HTML in message (already-escaped by callers where needed).
+// -----------------------------------------------------------------------------
+const fvcbDialog = (() => {
+  const ensureRoot = () => {
+    let root = document.getElementById('fvcb-dialog-root');
+    if (!root) {
+      root = document.createElement('div');
+      root.id = 'fvcb-dialog-root';
+      document.body.appendChild(root);
+    }
+    return root;
+  };
+
+  const open = ({ title = '', message = '', buttons }) => new Promise(resolve => {
+    const root = ensureRoot();
+    const html = `
+      <div class="fvcb-dialog-backdrop" role="dialog" aria-modal="true">
+        <div class="fvcb-dialog">
+          ${title ? `<h3>${title}</h3>` : ''}
+          <div class="fvcb-dialog-body">${message}</div>
+          <div class="fvcb-dialog-actions">
+            ${buttons.map((b, i) => `<button class="button ${b.cls || ''}" data-i="${i}">${b.label}</button>`).join('')}
+          </div>
+        </div>
+      </div>`;
+    root.innerHTML = html;
+
+    const close = result => {
+      root.innerHTML = '';
+      document.removeEventListener('keydown', onKey);
+      resolve(result);
+    };
+
+    root.querySelectorAll('button[data-i]').forEach(btn => {
+      btn.addEventListener('click', () => close(buttons[+btn.dataset.i].result));
+    });
+    // Click the backdrop to dismiss = same as cancel.
+    root.querySelector('.fvcb-dialog-backdrop').addEventListener('click', e => {
+      if (e.target === e.currentTarget) close(false);
+    });
+    const onKey = e => {
+      if (e.key === 'Escape') close(false);
+      else if (e.key === 'Enter') {
+        const primary = root.querySelector('button.button-primary, button.button:last-child');
+        if (primary) primary.click();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    setTimeout(() => {
+      const focus = root.querySelector('button.button-primary') || root.querySelector('button[data-i]');
+      if (focus) focus.focus();
+    }, 0);
+  });
+
+  return {
+    confirm: (message, title = '') => open({
+      title, message,
+      buttons: [
+        { label: 'Cancel', result: false },
+        { label: 'OK', cls: 'button-primary', result: true }
+      ]
+    }),
+    alert: (message, title = '') => open({
+      title, message,
+      buttons: [{ label: 'OK', cls: 'button-primary', result: true }]
+    })
+  };
+})();
+
 document.addEventListener('DOMContentLoaded', function () {
   // Country search functionality
   const searchInput = document.getElementById('country-search');
@@ -232,11 +304,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const revokeBtn = e.target.closest('.fvcb-revoke');
     const copyBtn = e.target.closest('.fvcb-copy');
     if (revokeBtn) {
-      if (!confirm('Revoke this token? Existing cookies using it will stop working.')) return;
+      const ok = await fvcbDialog.confirm(
+        'Existing cookies using this token will stop working.',
+        'Revoke token?'
+      );
+      if (!ok) return;
       const id = revokeBtn.dataset.id;
       revokeBtn.disabled = true;
       const r = await post('fv_country_blocker_token_revoke', { id });
-      if (!r.success) { alert('Failed: ' + (r.data || '')); revokeBtn.disabled = false; return; }
+      if (!r.success) {
+        await fvcbDialog.alert('Revoke failed: ' + (r.data || ''));
+        revokeBtn.disabled = false;
+        return;
+      }
       refresh();
     } else if (copyBtn) {
       try {
@@ -258,7 +338,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!btn) return;
   btn.addEventListener('click', async () => {
     const wasEnabled = btn.dataset.enabled === '1';
-    if (wasEnabled && !confirm('Disable country/datacenter/Tor blocking site-wide?')) return;
+    if (wasEnabled) {
+      const ok = await fvcbDialog.confirm(
+        'All country, datacenter and Tor blocking will stop site-wide.',
+        'Disable blocking?'
+      );
+      if (!ok) return;
+    }
     btn.disabled = true;
     try {
       const r = await fetch(fvCountryBlocker.ajax_url, {
@@ -271,14 +357,14 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const data = await r.json();
       if (!data.success) {
-        alert('Toggle failed: ' + (data.data || ''));
+        await fvcbDialog.alert('Toggle failed: ' + (data.data || ''));
         btn.disabled = false;
         return;
       }
       // Reload so the admin-bar shield color refreshes server-side.
       location.reload();
     } catch (e) {
-      alert('Toggle error: ' + e.message);
+      await fvcbDialog.alert('Toggle error: ' + e.message);
       btn.disabled = false;
     }
   });
@@ -291,7 +377,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const btn = document.querySelector('button.fvcb-self-update');
   if (!btn) return;
   btn.addEventListener('click', async () => {
-    if (!confirm(`Update plugin to v${btn.dataset.target}?`)) return;
+    const target = btn.dataset.target;
+    const ok = await fvcbDialog.confirm(
+      `Plugin will be updated to <strong>v${target}</strong> from GitHub.`,
+      'Update plugin?'
+    );
+    if (!ok) return;
     btn.disabled = true;
     const originalText = btn.textContent;
     btn.textContent = 'Updating…';
@@ -306,7 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const data = await r.json();
       if (!data.success) {
-        alert('Update failed: ' + (data.data?.error || JSON.stringify(data.data)));
+        await fvcbDialog.alert('Update failed: ' + (data.data?.error || JSON.stringify(data.data)));
         btn.disabled = false;
         btn.textContent = originalText;
         return;
@@ -317,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // a clean settings URL so we don't reload mid-redirect-chain.
       setTimeout(() => location.assign(location.pathname + location.search), 1500);
     } catch (e) {
-      alert('Update error: ' + e.message);
+      await fvcbDialog.alert('Update error: ' + e.message);
       btn.disabled = false;
       btn.textContent = originalText;
     }
