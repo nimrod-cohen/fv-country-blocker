@@ -3,7 +3,7 @@
  * Plugin Name: FV Country Blocker
  * Plugin URI: https://github.com/nimrod-cohen/fv-country-blocker
  * Description: Block visitors from specific countries using MaxMind GeoIP database.
- * Version: 1.5.8
+ * Version: 1.5.9
  * Author: nimrod-cohen
  * Author URI: https://github.com/nimrod-cohen/fv-country-blocker
  * License: GPL-2.0+
@@ -110,6 +110,8 @@ class FV_Country_Blocker {
       update_option('fv_country_blocker_blocked_countries', '');
     }
 
+    self::ensure_tokens_table();
+
     // Schedule the cron job for database updates
     if (!wp_next_scheduled('fv_country_blocker_update_db')) {
       wp_schedule_event(time(), 'weekly', 'fv_country_blocker_update_db');
@@ -147,6 +149,59 @@ class FV_Country_Blocker {
     add_action('init', [$this, 'check_visitor_country']);
     add_action('init', ['FV_BotDetector', 'registerCron']);
     add_action('wp_ajax_fv_country_blocker_test_ip', [$this, 'test_ip']);
+    add_action('wp_ajax_fv_country_blocker_token_create', [$this, 'ajax_token_create']);
+    add_action('wp_ajax_fv_country_blocker_token_revoke', [$this, 'ajax_token_revoke']);
+    add_action('wp_ajax_fv_country_blocker_token_list',   [$this, 'ajax_token_list']);
+    add_action('admin_init', [__CLASS__, 'ensure_tokens_table']);
+  }
+
+  // -------------------------------------------------------------------------
+  // Bypass-token admin AJAX
+  // -------------------------------------------------------------------------
+
+  private function token_guard() {
+    if (!current_user_can('manage_options')) {
+      wp_send_json_error('Forbidden', 403);
+    }
+    if (!wp_verify_nonce($_REQUEST['nonce'] ?? '', 'fv-country-blocker-nonce')) {
+      wp_send_json_error('Invalid nonce', 403);
+    }
+  }
+
+  public function ajax_token_list() {
+    $this->token_guard();
+    global $wpdb;
+    $table = $wpdb->prefix . 'fvcb_bypass_tokens';
+    $rows = $wpdb->get_results("SELECT id, token, name, created_at, last_used_at, revoked FROM $table ORDER BY id DESC", ARRAY_A);
+    wp_send_json_success(['tokens' => $rows ?: []]);
+  }
+
+  public function ajax_token_create() {
+    $this->token_guard();
+    $name = trim((string) ($_REQUEST['name'] ?? ''));
+    if ($name === '' || mb_strlen($name) > 120) {
+      wp_send_json_error('Name required (1-120 chars)');
+    }
+    global $wpdb;
+    $table = $wpdb->prefix . 'fvcb_bypass_tokens';
+    $token = wp_generate_password(24, false);
+    $ok = $wpdb->insert($table, [
+      'token' => $token,
+      'name' => $name,
+      'created_at' => current_time('mysql', true),
+    ]);
+    if (!$ok) wp_send_json_error('insert failed: ' . $wpdb->last_error);
+    wp_send_json_success(['id' => $wpdb->insert_id, 'token' => $token, 'name' => $name]);
+  }
+
+  public function ajax_token_revoke() {
+    $this->token_guard();
+    $id = (int) ($_REQUEST['id'] ?? 0);
+    if (!$id) wp_send_json_error('id required');
+    global $wpdb;
+    $table = $wpdb->prefix . 'fvcb_bypass_tokens';
+    $wpdb->update($table, ['revoked' => 1], ['id' => $id]);
+    wp_send_json_success(['id' => $id]);
   }
 
   public function test_ip() {
@@ -225,6 +280,68 @@ class FV_Country_Blocker {
     return in_array($ip, $list, true);
   }
 
+  /**
+   * Bypass-token check. Tokens are stored in wp_fvcb_bypass_tokens with
+   * name + created_at + last_used_at + revoked. Visitors arriving with
+   * `?fv_bypass=<token>` (matching a non-revoked row) skip all blocking
+   * and get a 10-year cookie. Subsequent visits with that cookie also
+   * skip blocking. Useful for legitimate users on filtered/proxied
+   * networks (e.g. NetFree) whose IPs are flagged as datacenter.
+   */
+  public static function check_bypass_token() {
+    $candidate = isset($_GET['fv_bypass']) ? (string) $_GET['fv_bypass'] : '';
+    $from_url = $candidate !== '';
+    if (!$candidate) {
+      $candidate = isset($_COOKIE['fv_bypass']) ? (string) $_COOKIE['fv_bypass'] : '';
+    }
+    if ($candidate === '' || strlen($candidate) > 64) return false;
+
+    global $wpdb;
+    $table = $wpdb->prefix . 'fvcb_bypass_tokens';
+    $row = $wpdb->get_row($wpdb->prepare(
+      "SELECT id, token, last_used_at FROM $table WHERE token = %s AND revoked = 0 LIMIT 1",
+      $candidate
+    ), ARRAY_A);
+    if (!$row) return false;
+
+    if ($from_url) {
+      // Persist as cookie so the URL param isn't needed again.
+      setcookie('fv_bypass', $row['token'], [
+        'expires' => time() + (10 * YEAR_IN_SECONDS),
+        'path' => '/',
+        'secure' => is_ssl(),
+        'httponly' => true,
+        'samesite' => 'Lax',
+      ]);
+    }
+
+    // Throttle last_used_at updates to once per minute to avoid hot writes.
+    $last = $row['last_used_at'] ? strtotime($row['last_used_at']) : 0;
+    if ((time() - $last) > 60) {
+      $wpdb->update($table, ['last_used_at' => current_time('mysql', true)], ['id' => $row['id']]);
+    }
+
+    return true;
+  }
+
+  public static function ensure_tokens_table() {
+    global $wpdb;
+    $table = $wpdb->prefix . 'fvcb_bypass_tokens';
+    $charset = $wpdb->get_charset_collate();
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+    dbDelta("CREATE TABLE $table (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      token VARCHAR(64) NOT NULL,
+      name VARCHAR(120) NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_used_at DATETIME NULL,
+      revoked TINYINT(1) NOT NULL DEFAULT 0,
+      PRIMARY KEY (id),
+      UNIQUE KEY token (token),
+      KEY revoked (revoked)
+    ) $charset;");
+  }
+
   public static function is_trusted_user_agent($ua) {
     if (empty($ua)) return false;
 
@@ -263,6 +380,12 @@ class FV_Country_Blocker {
 
     // Get the user's IP address
     $ip = FV_GeoIP::get_user_ip();
+
+    // Bypass token (URL ?fv_bypass=… or persistent cookie). Sets the cookie
+    // on first hit so subsequent visits skip the whole block path.
+    if (self::check_bypass_token()) {
+      return;
+    }
 
     if (!$force && (
       current_user_can('administrator')

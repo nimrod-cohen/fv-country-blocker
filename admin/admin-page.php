@@ -95,6 +95,7 @@ function fv_country_blocker_admin_page() {
             <a href="#settings" class="nav-tab nav-tab-active">Settings</a>
             <a href="#countries" class="nav-tab">Blocked Countries</a>
             <a href="#bot-defense" class="nav-tab">Bot Defense</a>
+            <a href="#bypass-tokens" class="nav-tab">Bypass Tokens</a>
             <a href="#test-ip" class="nav-tab">Test IP</a>
         </h2>
 
@@ -105,6 +106,7 @@ function fv_country_blocker_admin_page() {
             <?php require_once 'test-ip.php'?>
             <?php submit_button();?>
         </form>
+        <?php require_once 'bypass-tokens.php';?>
     </div>
     <?php
 }

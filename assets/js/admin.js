@@ -150,3 +150,102 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+// -----------------------------------------------------------------------------
+// Bypass tokens tab
+// -----------------------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+  const tab = document.getElementById('bypass-tokens');
+  if (!tab) return;
+
+  const tbody = tab.querySelector('table.fvcb-tokens tbody');
+  const status = tab.querySelector('.fvcb-token-status');
+  const nameInput = tab.querySelector('#fvcb-token-name');
+  const createBtn = tab.querySelector('#fvcb-token-create');
+
+  const esc = v => {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  };
+
+  const post = async (action, body = {}) => {
+    const r = await fetch(fvCountryBlocker.ajax_url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ action, nonce: fvCountryBlocker.nonce, ...body })
+    });
+    return r.json();
+  };
+
+  const sampleUrl = token => `${location.origin}/?fv_bypass=${encodeURIComponent(token)}`;
+
+  const render = tokens => {
+    if (!tokens.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="color:#888;">No tokens yet — create one above.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = tokens.map(t => {
+      const revoked = String(t.revoked) === '1' || t.revoked === true;
+      const tokenCell = revoked
+        ? `<code style="color:#999;text-decoration:line-through">${esc(t.token)}</code>`
+        : `<code class="fvcb-token-value" style="user-select:all">${esc(t.token)}</code>
+           <button type="button" class="button button-small fvcb-copy" data-token="${esc(t.token)}">Copy</button>`;
+      const status = revoked
+        ? '<span style="color:#a00;font-weight:bold">revoked</span>'
+        : '<span style="color:#137333;font-weight:bold">active</span>';
+      const action = revoked
+        ? '—'
+        : `<button type="button" class="button button-small fvcb-revoke" data-id="${esc(t.id)}">Revoke</button>`;
+      const url = revoked ? '—' : `<a href="${esc(sampleUrl(t.token))}" target="_blank" rel="noopener">link</a>`;
+      return `<tr data-id="${esc(t.id)}">
+        <td>${esc(t.name)}</td>
+        <td>${tokenCell}</td>
+        <td>${esc(t.created_at || '')}</td>
+        <td>${esc(t.last_used_at || '—')}</td>
+        <td>${status}</td>
+        <td>${url}</td>
+        <td>${action}</td>
+      </tr>`;
+    }).join('');
+  };
+
+  const refresh = async () => {
+    const r = await post('fv_country_blocker_token_list');
+    if (!r.success) { status.textContent = 'Load failed: ' + (r.data || ''); return; }
+    render(r.data.tokens || []);
+  };
+
+  createBtn.addEventListener('click', async () => {
+    const name = nameInput.value.trim();
+    if (!name) { nameInput.focus(); return; }
+    createBtn.disabled = true;
+    status.textContent = 'Creating…';
+    const r = await post('fv_country_blocker_token_create', { name });
+    createBtn.disabled = false;
+    if (!r.success) { status.textContent = 'Failed: ' + (r.data || ''); return; }
+    status.textContent = 'Created.';
+    nameInput.value = '';
+    refresh();
+  });
+
+  tbody.addEventListener('click', async e => {
+    const revokeBtn = e.target.closest('.fvcb-revoke');
+    const copyBtn = e.target.closest('.fvcb-copy');
+    if (revokeBtn) {
+      if (!confirm('Revoke this token? Existing cookies using it will stop working.')) return;
+      const id = revokeBtn.dataset.id;
+      revokeBtn.disabled = true;
+      const r = await post('fv_country_blocker_token_revoke', { id });
+      if (!r.success) { alert('Failed: ' + (r.data || '')); revokeBtn.disabled = false; return; }
+      refresh();
+    } else if (copyBtn) {
+      try {
+        await navigator.clipboard.writeText(copyBtn.dataset.token);
+        copyBtn.textContent = 'Copied';
+        setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+      } catch (_) {}
+    }
+  });
+
+  refresh();
+});
