@@ -46,15 +46,15 @@
           <textarea id="fv-cb-trusted-uas" name="fv_country_blocker_trusted_user_agents" rows="6" cols="50" class="large-text code"><?php echo esc_textarea(get_option('fv_country_blocker_trusted_user_agents', '')); ?></textarea>
           <p class="description">One pattern per line. Visitors whose User-Agent contains any of these substrings (case-insensitive) bypass all blocking. Useful for uptime monitors that rotate datacenter IPs (e.g. <code>UptimeRobot/</code>).</p>
           <p style="margin-top: 8px;">
-            <button type="button" id="fv-cb-add-legit-bots" class="button">Add legitimate crawlers</button>
-            <span class="description" style="margin-left: 8px;">Appends Googlebot, bingbot, DuckDuckBot, Slurp, Applebot, Twitterbot, facebookexternalhit (skips any already present). Remember to click <em>Save Changes</em> afterwards.</span>
+            <button type="button" id="fv-cb-add-legit-bots" class="button">Add social crawlers</button>
+            <span class="description" style="margin-left: 8px;">Appends DuckDuckBot, Twitterbot, facebookexternalhit (skips any already present). The major search engines (Googlebot, Bingbot, Yahoo Slurp, Applebot) are verified automatically via <strong>Allow known crawlers</strong> in the Bot Defense tab &mdash; don't add those here. Remember to click <em>Save Changes</em> afterwards.</span>
           </p>
           <script>
           (function () {
             var btn = document.getElementById('fv-cb-add-legit-bots');
             var ta = document.getElementById('fv-cb-trusted-uas');
             if (!btn || !ta) return;
-            var crawlers = ['Googlebot', 'bingbot', 'DuckDuckBot', 'Slurp', 'Applebot', 'Twitterbot', 'facebookexternalhit'];
+            var crawlers = ['DuckDuckBot', 'Twitterbot', 'facebookexternalhit'];
             btn.addEventListener('click', function () {
               // Existing patterns are case-insensitive substrings, so we
               // dedupe with the same rule: skip a crawler if any existing

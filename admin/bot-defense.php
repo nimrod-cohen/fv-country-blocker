@@ -21,6 +21,13 @@
         </td>
       </tr>
       <tr valign="top">
+        <th scope="row">Allow known crawlers</th>
+        <td>
+          <label><input type="checkbox" name="fv_country_blocker_allow_known_crawlers" value="1" <?php checked(get_option('fv_country_blocker_allow_known_crawlers', '1'), '1'); ?> /> Enabled</label>
+          <p class="description">Exempts genuine search-engine crawlers from <strong>all</strong> blocking (datacenter, Tor and country) using <strong>forward-confirmed reverse DNS</strong> &mdash; not a spoofable User-Agent. Covers <code>Googlebot</code> (googlebot.com / google.com), <code>bingbot</code> (search.msn.com), Yahoo <code>Slurp</code> (crawl.yahoo.net) and <code>Applebot</code> (applebot.apple.com). DNS lookups run only for requests claiming these crawlers and the result is cached per IP, so legitimate visitors are unaffected. When enabled, a plain <em>Trusted User-Agent</em> entry for these four is ignored (the rDNS check is authoritative). Social crawlers (DuckDuckBot, Twitterbot, facebookexternalhit) don't publish reverse DNS &mdash; add those to <em>Trusted User-Agents</em> if needed.</p>
+        </td>
+      </tr>
+      <tr valign="top">
         <th scope="row">CAPTCHA for public forms</th>
         <td>
           <label><input type="checkbox" name="fv_country_blocker_enable_captcha" value="1" <?php checked(get_option('fv_country_blocker_enable_captcha', '1'), '1'); ?> /> Enabled</label>

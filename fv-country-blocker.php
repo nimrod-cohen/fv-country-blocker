@@ -3,7 +3,7 @@
  * Plugin Name: FV Country Blocker
  * Plugin URI: https://github.com/nimrod-cohen/fv-country-blocker
  * Description: Block visitors from specific countries using MaxMind GeoIP database.
- * Version: 1.5.20
+ * Version: 1.6.0
  * Author: nimrod-cohen
  * Author URI: https://github.com/nimrod-cohen/fv-country-blocker
  * License: GPL-2.0+
@@ -433,9 +433,22 @@ class FV_Country_Blocker {
     $raw = get_option('fv_country_blocker_trusted_user_agents', '');
     if (empty($raw)) return false;
 
+    // When verified-crawler mode is on, plain-UA matches for the crawlers it
+    // governs (Googlebot/bingbot/Slurp/Applebot) are ignored here — those are
+    // exempted only via forward-confirmed reverse DNS, so a spoofed UA string
+    // can't bypass the rDNS gate.
+    $governed = [];
+    if (class_exists('FV_CrawlerVerifier') && FV_CrawlerVerifier::is_enabled()) {
+      $governed = array_map('strtolower', FV_CrawlerVerifier::governed_tokens());
+    }
+
     foreach (preg_split('/\r?\n/', $raw) as $pattern) {
       $pattern = trim($pattern);
-      if ($pattern !== '' && stripos($ua, $pattern) !== false) {
+      if ($pattern === '') continue;
+      if (!empty($governed) && in_array(strtolower($pattern), $governed, true)) {
+        continue; // governed by FCrDNS — skip plain-UA match
+      }
+      if (stripos($ua, $pattern) !== false) {
         return true;
       }
     }
@@ -494,12 +507,15 @@ class FV_Country_Blocker {
       }
     }
 
+    $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+
     if (!$force && (
       current_user_can('administrator')
       || wp_get_environment_type() != 'production'
       || $ip == '127.0.0.1'
       || self::is_whitelisted_ip($ip)
-      || self::is_trusted_user_agent($_SERVER['HTTP_USER_AGENT'] ?? ''))) {
+      || self::is_trusted_user_agent($ua)
+      || (class_exists('FV_CrawlerVerifier') && FV_CrawlerVerifier::is_verified_crawler($ip, $ua)))) {
       return;
     }
 

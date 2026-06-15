@@ -4,7 +4,7 @@ Tags: country blocker, IP blocker, geo-blocking, security
 Requires at least: 5.0
 Tested up to: 6.0
 Requires PHP: 7.0
-Stable tag: 1.5.20
+Stable tag: 1.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -45,6 +45,12 @@ You can simulate a visitor's country by adding `?force_country_ip=xxx.xxx.xxx.xx
 1. **Settings Page** – Easily block or allow traffic from specific countries.
 
 == Changelog ==
+
+= 1.6.0 =
+
+- Added "Allow known crawlers" Bot Defense option: exempts genuine search-engine crawlers (Googlebot, Bingbot, Yahoo Slurp, Applebot) from all blocking via forward-confirmed reverse DNS instead of a spoofable User-Agent. DNS runs only for crawler-claiming requests and is cached per IP.
+- When enabled, plain Trusted User-Agent matches for those four crawlers are ignored (rDNS is authoritative), preventing UA-spoofing bypass.
+- The "Add legitimate crawlers" button is now "Add social crawlers" and appends only DuckDuckBot, Twitterbot, facebookexternalhit (which don't publish reverse DNS).
 
 = 1.0.0 =
 
