@@ -3,7 +3,7 @@
  * Plugin Name: FV Country Blocker
  * Plugin URI: https://github.com/nimrod-cohen/fv-country-blocker
  * Description: Block visitors from specific countries using MaxMind GeoIP database.
- * Version: 1.6.0
+ * Version: 1.7.0
  * Author: nimrod-cohen
  * Author URI: https://github.com/nimrod-cohen/fv-country-blocker
  * License: GPL-2.0+
@@ -455,6 +455,40 @@ class FV_Country_Blocker {
     return false;
   }
 
+  /**
+   * Path-based exemption. Requests whose URL path matches one of the
+   * admin-configured patterns (option fv_country_blocker_exempt_paths,
+   * one per line) skip ALL blocking — country, Tor and datacenter.
+   *
+   * Intended for transactional / account pages reached from emails
+   * (e.g. /manage-subscription/) that must be reachable from anywhere,
+   * including abroad or on filtered/proxied networks whose egress IPs
+   * are flagged as datacenter.
+   *
+   * Matching is case-insensitive and trailing-slash-insensitive, ignores
+   * the query string, and supports a trailing "*" wildcard for subtrees
+   * (e.g. "/account/*" matches "/account/billing/"). Runs on init, so it
+   * reads REQUEST_URI directly rather than relying on WP's parsed query.
+   */
+  public static function is_exempt_path() {
+    $raw = get_option('fv_country_blocker_exempt_paths', '');
+    if (empty($raw)) return false;
+
+    $path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '/';
+    $path = rtrim(strtolower($path), '/') . '/';
+
+    foreach (preg_split('/\r?\n/', $raw) as $pattern) {
+      $pattern = trim(strtolower($pattern));
+      if ($pattern === '') continue;
+      if (substr($pattern, -1) === '*') {
+        if (strpos($path, rtrim($pattern, '*')) === 0) return true;
+      } else {
+        if ($path === rtrim($pattern, '/') . '/') return true;
+      }
+    }
+    return false;
+  }
+
   public static function get_server_external_ip() {
     $cached = get_transient('fv_country_blocker_server_external_ip');
     if ($cached !== false) return $cached;
@@ -513,6 +547,7 @@ class FV_Country_Blocker {
       current_user_can('administrator')
       || wp_get_environment_type() != 'production'
       || $ip == '127.0.0.1'
+      || self::is_exempt_path()
       || self::is_whitelisted_ip($ip)
       || self::is_trusted_user_agent($ua)
       || (class_exists('FV_CrawlerVerifier') && FV_CrawlerVerifier::is_verified_crawler($ip, $ua)))) {

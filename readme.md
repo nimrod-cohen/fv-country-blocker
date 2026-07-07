@@ -4,7 +4,7 @@ Tags: country blocker, IP blocker, geo-blocking, security
 Requires at least: 5.0
 Tested up to: 6.0
 Requires PHP: 7.0
-Stable tag: 1.6.0
+Stable tag: 1.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -45,6 +45,11 @@ You can simulate a visitor's country by adding `?force_country_ip=xxx.xxx.xxx.xx
 1. **Settings Page** – Easily block or allow traffic from specific countries.
 
 == Changelog ==
+
+= 1.7.0 =
+
+- Added "Exempt Paths" (Settings tab): requests to configured URL paths bypass all blocking (country, Tor and datacenter/VPN). Intended for transactional/account pages reached from email links (e.g. /manage-subscription/) that must be reachable from anywhere, including abroad or on filtered/proxied networks whose egress IPs are flagged as datacenter.
+- Matching ignores the query string, is case- and trailing-slash-insensitive, and supports a trailing `*` wildcard for subtrees (e.g. `/account/*`).
 
 = 1.6.0 =
 

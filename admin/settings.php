@@ -82,6 +82,14 @@
           </script>
         </td>
       </tr>
+      <tr valign="top">
+        <th scope="row">Exempt Paths</th>
+        <td>
+          <textarea name="fv_country_blocker_exempt_paths" rows="4" cols="50" class="large-text code"><?php echo esc_textarea(get_option('fv_country_blocker_exempt_paths', '')); ?></textarea>
+          <p class="description">One URL path per line. Requests to these paths bypass <strong>all</strong> blocking (country, Tor and datacenter/VPN) &mdash; use for transactional pages that must be reachable from anywhere, e.g. a subscription-management link sent by email. The query string is ignored, matching is case- and trailing-slash-insensitive, and a trailing <code>*</code> matches a subtree (e.g. <code>/account/*</code> matches <code>/account/billing/</code>).</p>
+          <p class="description">Example: <code>/manage-subscription/</code></p>
+        </td>
+      </tr>
     </table>
 
 </div>

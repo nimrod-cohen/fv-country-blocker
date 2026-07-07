@@ -45,6 +45,11 @@ function fv_country_blocker_admin_page() {
     $trusted_uas = array_filter(array_map('trim', preg_split('/\r?\n/', $trusted_ua_raw)), 'strlen');
     update_option('fv_country_blocker_trusted_user_agents', implode("\n", $trusted_uas));
 
+    // Update exempt paths — one URL path pattern per line
+    $exempt_paths_raw = $_POST['fv_country_blocker_exempt_paths'] ?? '';
+    $exempt_paths = array_filter(array_map('trim', preg_split('/\r?\n/', $exempt_paths_raw)), 'strlen');
+    update_option('fv_country_blocker_exempt_paths', implode("\n", $exempt_paths));
+
     // Bot defense toggles (checkboxes: present => '1', absent => '0')
     update_option('fv_country_blocker_enable_tor', !empty($_POST['fv_country_blocker_enable_tor']) ? '1' : '0');
     update_option('fv_country_blocker_enable_datacenter', !empty($_POST['fv_country_blocker_enable_datacenter']) ? '1' : '0');
